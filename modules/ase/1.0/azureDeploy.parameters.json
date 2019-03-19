@@ -15,7 +15,7 @@
         "value": "${workload.region}"
     },
     "website-name": {
-        "value": "samplemvc"
+        "value": "${workload.website-name}"
     },    
     "worker-size": {
         "value": "0"

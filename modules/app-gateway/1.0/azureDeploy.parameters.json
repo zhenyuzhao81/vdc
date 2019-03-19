@@ -6,10 +6,10 @@
         "value": "${shared-services.network.application-gateway.name}"
     },
     "tier": {
-        "value": "Standard"
+        "value": "${shared-services.network.application-gateway.tier}"
     },
     "sku-size": {
-        "value": "Standard_Small"
+        "value": "${shared-services.network.application-gateway.sku-size}"
     },
     "capacity": {
         "value": 2
@@ -39,6 +39,14 @@
             "secretName": "self-certificate-base64"
         }
     },
+    "ssl-cer-data": {
+        "reference": {
+            "keyVault": {
+                "id": "/subscriptions/${shared-services.subscription-id}/resourceGroups/${general.organization-name}-${shared-services.deployment-name}-kv-rg/providers/Microsoft.KeyVault/vaults/${general.organization-name}-${shared-services.deployment-name}-kv"
+            },
+            "secretName": "self-certificate-cer-base64"
+        }
+    },
     "ssl-cert-name": {
         "value": "localhost"
     },
@@ -59,5 +67,11 @@
     },
     "existing-app-gateway": {
         "value": false
+    },
+    "website-name": {
+        "value": "${workload.website-name}"
+    }, 
+    "dns-suffix": {
+        "value": "${shared-services.active-directory.domain-name}"
     }
 }

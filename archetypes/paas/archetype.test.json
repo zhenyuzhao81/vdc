@@ -34,6 +34,10 @@
                             "vm-ip-address-start": "10.4.0.5"
                         }
                     }
+                },
+                "application-gateway": {
+                    "tier": "WAF",
+                    "sku-size": "WAF_Medium"
                 }
             }
         },
@@ -41,6 +45,7 @@
             "subscription-id": "00000000-0000-0000-0000-000000000000",
             "deployment-name": "paas",
             "region": "Central US",
+            "website-name": "samplemvc",
             "azure-sql-configuration": {
                 "admin-user": "sql-admin-user"
             },
@@ -171,7 +176,9 @@
                 "shared-services-subnet-address-prefix": "10.4.0.32/27"
             },
             "application-gateway": {
-                "name": "${general.organization-name}-${general.shared-services.deployment-name}-app-gw"
+                "name": "${general.organization-name}-${general.shared-services.deployment-name}-app-gw",
+                "tier": "${general.shared-services.network.application-gateway.tier}",
+                "sku-size": "${general.shared-services.network.application-gateway.sku-size}"
             }
         },
         "keyvault": {
@@ -183,6 +190,7 @@
         "subscription-id": "${general.workload.subscription-id}",
         "deployment-name": "${general.workload.deployment-name}",
         "region": "${general.workload.region}",
+        "website-name": "${general.workload.website-name}",
         "azure-sql-configuration": {
             "admin-user": "${general.workload.azure-sql-configuration.admin-user}"
         },
