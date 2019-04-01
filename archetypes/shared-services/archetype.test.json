@@ -39,6 +39,10 @@
                         "secretValue": ""
                     },
                     {
+                        "secretName": "self-certificate-cer-base64",
+                        "secretValue": ""
+                    },
+                    {
                         "secretName": "self-certificate-password",
                         "secretValue": ""
                     }

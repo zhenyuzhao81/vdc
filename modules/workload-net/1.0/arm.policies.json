@@ -19,5 +19,28 @@
                 "effect":"audit"
             }
         }
+    },
+    {
+        "name":"enforceHubVnetPeering",
+        "description":"Policy to enforce peering with Hub VNET only",
+        "rules":{
+            "if": {
+                "allOf": [
+                  {
+                    "field": "type",
+                    "equals": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings"
+                  },
+                  {
+                    "not": {
+                      "field": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings/remoteVirtualNetwork.id",
+                      "equals": "${external.hub.net.vnet-id}"
+                    }
+                  }
+                ]
+            },
+            "then": {
+                "effect": "audit"
+            }
+        }
     }
 ]}
