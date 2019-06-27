@@ -1,9 +1,10 @@
 {
     "ModuleConfigurationsPath": "../../modules",
-    "ModuleConfigurations": [{
+    "ModuleConfigurations": [
+        {
             "Name": "DiagnosticStorageAccount",
             "ModuleDefinitionName": "StorageAccounts",
-            "ResourceGroupName": "fabrikam-ase-sqldb-diagnostics-rg",
+            "ResourceGroupName": "fabrikam-shrdsvcs-diagnostics-rg",
             "Comments": "Storage Account that is used for ...",
             "Version": "2.0",
             "Policies": {
@@ -13,7 +14,7 @@
                         "value": "Deny"
                     },
                     "resourceGroup": {
-                        "value": "fabrikam-ase-sqldb-diagnostics-rg"
+                        "value": "fabrikam-shrdsvcs-diagnostics-rg"
                     },
                     "resourceGroupLocation": {
                         "value": "West US 2"
@@ -36,7 +37,7 @@
         {
             "Name": "LogAnalytics",
             "ModuleDefinitionName": "LogAnalytics",
-            "ResourceGroupName": "fabrikam-ase-sqldb-diagnostics-rg",
+            "ResourceGroupName": "fabrikam-shrdsvcs-diagnostics-rg",
             "Deployment": {
                 "OverrideParameters": {
                     "logAnalyticsWorkspaceName": {
@@ -58,9 +59,46 @@
             }
         },
         {
+            "Name": "AutomationAccounts",
+            "ModuleDefinitionName": "AutomationAccounts",
+            "ResourceGroupName": "fabrikam-shrdsvcs-diagnostics-rg",
+            "Deployment": {
+                "OverrideParameters": {
+                    "automationAccountName": {
+                        "value": "${ArchetypeParameters.Parameters.AutomationAccount.Name}"
+                    },
+                    "location": {
+                        "value": "${ArchetypeParameters.Parameters.AutomationAccount.Location}"
+                    },
+                    "umTimeZone": {
+                        "value": "${ArchetypeParameters.Parameters.AutomationAccount.UpdateManagementTimeZone}"
+                    },
+                    "workspaceId": {
+                        "value": "reference(LogAnalytics.logAnalyticsWorkspaceResourceId)"
+                    },
+                    "diagnosticStorageAccountId": {
+                        "value": "reference(DiagnosticStorageAccount.storageAccountResourceId)"
+                    }
+                }
+            }
+        },
+        {
+            "Name": "LinkLogAnalyticsWithAutomationAccount",
+            "ModuleDefinitionName": "LogAnalytics",
+            "ResourceGroupName": "fabrikam-shrdsvcs-diagnostics-rg",
+            "Updates": "LogAnalytics",
+            "Deployment": {
+                "OverrideParameters": {
+                    "automationAccountId": {
+                        "value": "reference(AutomationAccounts.automationAccountResourceId)"
+                    }
+                }
+            }
+        },
+        {
             "Name": "DefaultNSG",
             "ModuleDefinitionName": "NetworkSecurityGroups",
-            "ResourceGroupName": "fabrikam-ase-sqldb-network-rg",
+            "ResourceGroupName": "fabrikam-shrdsvcs-network-rg",
             "Deployment": {
                 "OverrideParameters": {
                     "workspaceId": {
@@ -70,10 +108,10 @@
                         "value": "reference(DiagnosticStorageAccount.storageAccountResourceId)"
                     },
                     "networkSecurityGroupName": {
-                        "value": "${ArchetypeParameters.Parameters.NetworkSecurityGroups.Default.Name}"
+                        "value": "${ArchetypeParameters.Parameters.NetworkSecurityGroups.SharedServices.Name}"
                     },
                     "networkSecurityGroupSecurityRules": {
-                        "value": "${ArchetypeParameters.Parameters.NetworkSecurityGroups.Default.Rules}"
+                        "value": "${ArchetypeParameters.Parameters.NetworkSecurityGroups.SharedServices.Rules}"
                     }
                 }
             }
@@ -81,14 +119,14 @@
         {
             "Name": "DefaultRouteTable",
             "ModuleDefinitionName": "RouteTables",
-            "ResourceGroupName": "fabrikam-ase-sqldb-network-rg",
+            "ResourceGroupName": "fabrikam-shrdsvcs-network-rg",
             "Deployment": {
                 "OverrideParameters": {
                     "routeTableName": {
-                        "value": "${ArchetypeParameters.Parameters.RouteTables.Default.Name}"
+                        "value": "${ArchetypeParameters.Parameters.RouteTables.SharedServices.Name}"
                     },
                     "routes": {
-                        "value": "${ArchetypeParameters.Parameters.RouteTables.Default.Routes}"
+                        "value": "${ArchetypeParameters.Parameters.RouteTables.SharedServices.Routes}"
                     }
                 }
             }
@@ -96,7 +134,7 @@
         {
             "Name": "VirtualNetwork",
             "ModuleDefinitionName": "vNet",
-            "ResourceGroupName": "fabrikam-ase-sqldb-network-rg",
+            "ResourceGroupName": "fabrikam-shrdsvcs-network-rg",
             "Deployment": {
                 "OverrideParameters": {
                     "vnetName": {
@@ -123,41 +161,25 @@
         {
             "Name": "VirtualNetworkPeering",
             "ModuleDefinitionName": "vNetPeering",
-            "ResourceGroupName": "fabrikam-ase-sqldb-network-rg",
-            "Deployment": {
-                "OverrideParameters": {
-                    "localVnetName": {
-                        "value": "reference(VirtualNetwork.vNetName)"
-                    },
-                    "peeringName": {
-                        "value": "ase-sqldb-to-shrdsvcs"
-                    },
-                    "remoteVirtualNetworkId": {
-                        "value": "reference(fabrikam-shrdsvcs.VirtualNetwork.vNetResourceId)"
-                    }
-                }
-            }
-        },
-        {
-            "Name": "SharedSvcsVirtualNetworkPeering",
-            "ModuleDefinitionName": "vNetPeering",
-            "Subscription": "SharedServices",
             "ResourceGroupName": "fabrikam-shrdsvcs-network-rg",
             "Deployment": {
                 "OverrideParameters": {
-                    "localVnetName": {
-                        "value": "reference(fabrikam-shrdsvcs.VirtualNetwork.vNetName)"
+                    "vnetName": {
+                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.Name}"
                     },
-                    "peeringName": {
-                        "value": "shrdsvcs-to-ase-sqldb"
+                    "vnetAddressPrefixes": {
+                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.AddressPrefixes}"
                     },
-                    "remoteVirtualNetworkId": {
-                        "value": "reference(${ArchetypeParameters.InstanceName}.VirtualNetwork.vNetResourceId)"
+                    "dnsServers": {
+                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.DnsServers}"
                     },
-                    "allowGatewayTransit": {
-                        "value": true
+                    "subnets": {
+                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.Subnets}"
                     },
-                    "useRemoteGateways": {
+                    "enableDdosProtection": {
+                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.EnableDdosProtection}"
+                    },
+                    "enableVmProtection": {
                         "value": false
                     }
                 }
@@ -182,7 +204,7 @@
         {
             "Name": "KeyVault",
             "ModuleDefinitionName": "KeyVault",
-            "ResourceGroupName": "fabrikam-ase-sqldb-keyvault-rg",
+            "ResourceGroupName": "fabrikam-shrdsvcs-keyvault-rg",
             "Deployment": {
                 "OverrideParameters": {
                     "keyVaultName": {
@@ -224,79 +246,182 @@
             }
         },
         {
-            "Name": "ASE",
-            "ModuleDefinitionName": "AppServiceEnvironments",
-            "ResourceGroupName": "fabrikam-ase-rg",
+            "Name": "ArtifactsStorageAccount",
+            "Subscription": "Artifacts",
+            "ModuleDefinitionName": "StorageAccounts",
+            "ResourceGroupName": "fabrikam-shrdsvcs-artifacts-rg",
+            "Comments": "Storage Account that is used for ...",
             "Deployment": {
                 "OverrideParameters": {
-                    "dnsSuffix": {
-                        "value": "${ArchetypeParameters.Parameters.AppServiceEnvironment.DnsSuffix}"
+                    "storageAccountName": {
+                        "value": "${ArchetypeParameters.Parameters.ArtifactsStorageAccount.Name}"
                     },
-                    "appServiceEnvironmentName": {
-                        "value": "${ArchetypeParameters.Parameters.AppServiceEnvironment.Name}"
-                    },
-                    "internalLoadBalancingMode": {
-                        "value": "${ArchetypeParameters.Parameters.AppServiceEnvironment.InternalLoadBalancingMode}"
-                    },
-                    "ipSSLAddressCount": {
-                        "value": 0
-                    },
-                    "vnetResourceGroup": {
-                        "value": "reference(VirtualNetwork.vNetResourceGroup)"
-                    },
-                    "vnetName": {
-                        "value": "reference(VirtualNetwork.vNetName)"
+                    "storageAccountSku": {
+                        "value": "${ArchetypeParameters.Parameters.ArtifactsStorageAccount.Sku}"
                     }
                 }
             }
         },
         {
-            "Name": "ASEServicePlan",
-            "ModuleDefinitionName": "AppServicePlan",
-            "ResourceGroupName": "fabrikam-ase-rg",
+            "Name": "AppServiceEnvironment",
+            "ModuleDefinitionName": "Jumpbox",
+            "ResourceGroupName": "fabrikam-shrdsvcs-jumpbox-rg",
+            "Comments": "Creates Windows and Linux Jumpboxes",
             "Deployment": {
                 "OverrideParameters": {
-                    "appServicePlanName": {
-                        "value": "fabrikam-ase-webapp-plan01"
+                    "windowsVirtualMachineName": {
+                        "value": "${ArchetypeParameters.Parameters.Jumpbox.Windows.Name}"
                     },
-                    "appServiceEnvironmentId": {
-                        "value": "reference(ASE.appServiceEnvironmentResourceId)"
+                    "linuxVirtualMachineName": {
+                        "value": "${ArchetypeParameters.Parameters.Jumpbox.Linux.Name}"
                     },
-                    "sku": {
-                        "value": "${ArchetypeParameters.Parameters.AppServicePlan.Sku}"
+                    "workspaceId": {
+                        "value": "reference(LogAnalytics.logAnalyticsWorkspaceId)"
+                    },
+                    "logAnalyticsWorkspacePrimarySharedKey": {
+                        "value": "reference(LogAnalytics.logAnalyticsPrimarySharedKey)"
+                    },
+                    "artifactsStorageAccountKey": {
+                        "value": "reference(ArtifactsStorageAccount.storageAccountAccessKey)"
+                    },
+                    "artifactsStorageAccountName": {
+                        "value": "reference(ArtifactsStorageAccount.storageAccountName)"
+                    },
+                    "vNetId": {
+                        "value": "reference(VirtualNetwork.vNetResourceId)"
+                    },
+                    "jumpboxAsgId": {
+                        "value": "reference(JumpboxASG.applicationSecurityGroupResourceId)"
+                    },
+                    "subnetName": {
+                        "value": "${ArchetypeParameters.Parameters.Jumpbox.SubnetName}"
+                    },
+                    "adminUsername": {
+                        "value": "${ArchetypeParameters.Parameters.Jumpbox.AdminUsername}"
+                    },
+                    "adminPassword": {
+                        "reference": {
+                            "keyVault": {
+                                "id": "reference(KeyVault.keyVaultResourceId)"
+                            },
+                            "secretName": "${ArchetypeParameters.Parameters.KeyVault.SecretsObject.Secrets[0].secretName}"
+                        }
+                    },
+                    "windowsVirtualMachineCount": {
+                        "value": "${ArchetypeParameters.Parameters.Jumpbox.Windows.VMCount}"
+                    },
+                    "windowsVirtualMachineSize": {
+                        "value": "${ArchetypeParameters.Parameters.Jumpbox.Windows.VMSize}"
+                    },
+                    "windowsOSImage": {
+                        "value": "${ArchetypeParameters.Parameters.Jumpbox.Windows.OSImage}"
+                    },
+                    "linuxVirtualMachineCount": {
+                        "value": "${ArchetypeParameters.Parameters.Jumpbox.Linux.VMCount}"
+                    },
+                    "linuxVirtualMachineSize": {
+                        "value": "${ArchetypeParameters.Parameters.Jumpbox.Linux.VMSize}"
+                    },
+                    "linuxOSImage": {
+                        "value": "${ArchetypeParameters.Parameters.Jumpbox.Linux.OSImage}"
+                    },
+                    "diagnosticsStorageAccountName": {
+                        "value": "reference(DiagnosticStorageAccount.storageAccountName)"
+                    },
+                    "diagnosticsStorageAccountSasToken": {
+                        "value": "reference(DiagnosticStorageAccount.storageAccountSasToken)"
                     }
                 }
             }
-        },
-        {
-            "Name": "ASEWebApp",
-            "ModuleDefinitionName": "AppServiceWebApp",
-            "ResourceGroupName": "fabrikam-ase-rg",
-            "Deployment": {
-                "OverrideParameters": {
-                    "appServicePlanId": {
-                        "value": "reference(ASEServicePlan.appServicePlanResourceId)"
-                    },
-                    "appServiceEnvironmentId": {
-                        "value": "reference(ASE.appServiceEnvironmentResourceId)"
-                    },
-                    "appServiceWebAppName": {
-                        "value": "${ArchetypeParameters.Parameters.AppServiceWebApp.Name}"
-                    }
-                }
-            }
-        },
-        {
-            "Name": "SQLDBServer",
-            "ModuleDefinitionName": "SQLDB",
-            "ResourceGroupName": "fabrikam-sqldb-rg",
-            "Deployment": {}
         },
         {
             "Name": "SQLDatabase",
             "ModuleDefinitionName": "SQLDatabase",
-            "ResourceGroupName": "fabrikam-sqldb-rg",
-            "Deployment": {}
+            "ResourceGroupName": "fabrikam-shrdsvcs-adds-rg",
+            "Comments": "Creates Active Directory Domain Services VMs",
+            "Deployment": {
+                "OverrideParameters": {
+                    "virtualMachineName": {
+                        "value": "${ArchetypeParameters.Parameters.ActiveDirectoryDomainServices.Name}"
+                    },
+                    "virtualMachineOSImage": {
+                        "value": "${ArchetypeParameters.Parameters.ActiveDirectoryDomainServices.OSImage}"
+                    },
+                    "virtualMachineCount": {
+                        "value": "${ArchetypeParameters.Parameters.ActiveDirectoryDomainServices.VMCount}"
+                    },
+                    "virtualMachineSize": {
+                        "value": "${ArchetypeParameters.Parameters.ActiveDirectoryDomainServices.VMSize}"
+                    },
+                    "artifactsStorageAccountSasKey": {
+                        "value": "reference(ArtifactsStorageAccount.storageAccountSasToken)"
+                    },
+                    "artifactsStorageAccountKey": {
+                        "value": "reference(ArtifactsStorageAccount.storageAccountAccessKey)"
+                    },
+                    "artifactsStorageAccountName": {
+                        "value": "reference(ArtifactsStorageAccount.storageAccountName)"
+                    },
+                    "workspaceId": {
+                        "value": "reference(LogAnalytics.logAnalyticsWorkspaceId)"
+                    },
+                    "logAnalyticsWorkspacePrimarySharedKey": {
+                        "value": "reference(LogAnalytics.logAnalyticsPrimarySharedKey)"
+                    },
+                    "diagnosticsStorageAccountName": {
+                        "value": "reference(DiagnosticStorageAccount.storageAccountName)"
+                    },
+                    "diagnosticsStorageAccountSasToken": {
+                        "value": "reference(DiagnosticStorageAccount.storageAccountSasToken)"
+                    },
+                    "vNetId": {
+                        "value": "reference(VirtualNetwork.vNetResourceId)"
+                    },
+                    "adminUsername": {
+                        "value": "${ArchetypeParameters.Parameters.ActiveDirectoryDomainServices.AdminUsername}"
+                    },
+                    "adminPassword": {
+                        "reference": {
+                            "keyVault": {
+                                "id": "reference(KeyVault.keyVaultResourceId)"
+                            },
+                            "secretName": "${ArchetypeParameters.Parameters.KeyVault.SecretsObject.Secrets[0].secretName}"
+                        }
+                    },
+                    "addsAddressStart": {
+                        "value": "${ArchetypeParameters.Parameters.ActiveDirectoryDomainServices.AddsIPAddressStart}"
+                    },
+                    "domainName": {
+                        "value": "${ArchetypeParameters.Parameters.ActiveDirectoryDomainServices.DomainName}"
+                    },
+                    "primaryDCIP": {
+                        "value": "${ArchetypeParameters.Parameters.ActiveDirectoryDomainServices.PrimaryDomainControllerIP}"
+                    },
+                    "ADSitename": {
+                        "value": "${ArchetypeParameters.Parameters.ActiveDirectoryDomainServices.ADSitename}"
+                    },
+                    "domaincontrollerDriveLetter": {
+                        "value": "${ArchetypeParameters.Parameters.ActiveDirectoryDomainServices.DomaincontrollerDriveLetter}"
+                    },
+                    "subnetName": {
+                        "value": "${ArchetypeParameters.Parameters.ActiveDirectoryDomainServices.SubnetName}"
+                    },
+                    "domainAdminUsername": {
+                        "value": "${ArchetypeParameters.Parameters.ActiveDirectoryDomainServices.DomainAdminUsername}"
+                    },
+                    "domainAdminPassword": {
+                        "reference": {
+                            "keyVault": {
+                                "id": "reference(KeyVault.keyVaultResourceId)"
+                            },
+                            "secretName": "${ArchetypeParameters.Parameters.KeyVault.SecretsObject.Secrets[1].secretName}"
+                        }
+                    },
+                    "domainControllerAsgId": {
+                        "value": "reference(DomainControllerASG.applicationSecurityGroupResourceId)"
+                    }
+                }
+            }
         }
     ]
 }
