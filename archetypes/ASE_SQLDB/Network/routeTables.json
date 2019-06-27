@@ -272,7 +272,7 @@
             {
                 "name": "to-on-premises",
                 "properties": {
-                    "addressPrefix": "${ArchetypeParameters.Parameters.OnPremisesInformation.Network.AddressPrefix}",
+                    "addressPrefix": "${ArchetypeParameters.OnPremisesInformation.Network.AddressPrefix}",
                     "nextHopType": "VirtualNetworkGateway"
                 }
             }
