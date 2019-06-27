@@ -1,0 +1,195 @@
+{
+    "InstanceName": "fabrikam-ase-sqldb",
+    "Subscription": "ASE_SQLDB",
+    "Organization": "file(../common/archetypeOrganization.txt)",
+    "DeploymentName": "ase-sqldb",
+    "Parameters": {
+        "TenantId": "${Subscriptions.ASE_SQLDB.TenantId}",
+        "DeploymentUserId": "env(DEPLOYMENT_USER_ID)",
+        "OnPremisesInformation": {
+            "ActiveDirectory": {
+                "PrimaryDomainControllerIP": "192.168.1.4",
+                "DomainName": "fabrikam.com",
+                "ADSitename": "Cloud-Site",
+                "DomainAdminUserName": "fabrikam"
+            },
+            "Network": {
+                "AddressPrefix": "192.168.1.0/28"
+            }
+        },
+        "DiagnosticStorageAccount": {
+            "Name": "asesqldbdiagnostic01",
+            "ResourceGroup": "${ArchetypeParameters.Organization}-${ArchetypeParameters.DeploymentName}-diagnostics-rg",
+            "Sku": "Standard_GRS",
+            "NetworkAcls": {
+                "bypass": "AzureServices",
+                "defaultAction": "Deny",
+                "virtualNetworkRules": [
+                    {
+                        "subnet": "${ArchetypeParameters.Parameters.VirtualNetwork.Subnets[0].Name}"
+                    }
+                ],
+                "ipRules": []
+            }
+        },
+        "VirtualNetwork": {
+            "Name": "ase-sqldb-vnet",
+            "ResourceGroup": "${ArchetypeParameters.Organization}-${ArchetypeParameters.DeploymentName}-network-rg",
+            "AddressPrefixes": [
+                "172.1.0.0/16"
+            ],
+            "EnableDdosProtection": false,
+            "Subnets": [
+                {
+                    "name": "default",
+                    "addressPrefix": "172.1.0.0/24",
+                    "networkSecurityGroupName": "${ArchetypeParameters.Parameters.NetworkSecurityGroups.Default.Name}",
+                    "routeTableName": "${ArchetypeParameters.Parameters.RouteTables.Default.Name}",
+                    "serviceEndpoints": [
+                        {
+                            "service": "Microsoft.EventHub"
+                        },
+                        {
+                            "service": "Microsoft.Sql"
+                        },
+                        {
+                            "service": "Microsoft.Storage"
+                        },
+                        {
+                            "service": "Microsoft.KeyVault"
+                        }
+                    ]
+                }
+            ],
+            "DnsServers": [
+                "reference()"
+            ]
+        },
+        "ApplicationSecurityGroups": {},
+        "NetworkSecurityGroups": "file(Network/networkSecurityGroups.json)",
+        "KeyVault": {
+            "Name": "shrdsvcs-akv02",
+            "Sku": "Premium",
+            "EnableVaultForDeployment": true,
+            "EnableVaultForDiskEncryption": true,
+            "EnableVaultForTemplateDeployment": true,
+            "AccessPolicies": [
+                {
+                    "tenantId": "${ArchetypeParameters.Parameters.TenantId}",
+                    "objectId": "${ArchetypeParameters.Parameters.TenantId}",
+                    "permissions": {
+                        "certificates": [
+                            "All"
+                        ],
+                        "keys": [
+                            "All"
+                        ],
+                        "secrets": [
+                            "All"
+                        ]
+                    }
+                }
+            ],
+            "SecretsObject": {
+                "Comments": "Creating an object so we can use a secretsobject parameter type in our ARM template",
+                "Secrets": [
+                    {
+                        "secretName": "admin-user",
+                        "secretValue": "env(ADMIN_USER_PWD)"
+                    },
+                    {
+                        "secretName": "${ArchetypeParameters.Parameters.OnPremisesInformation.ActiveDirectory.DomainAdminUserName}",
+                        "secretValue": "env(DOMAIN_ADMIN_USER_PWD)"
+                    }
+                ]
+            },
+            "NetworkAcls": {
+                "bypass": "AzureServices",
+                "defaultAction": "Deny",
+                "virtualNetworkRules": [
+                    {
+                        "subnet": "${ArchetypeParameters.Parameters.VirtualNetwork.Subnets[0].Name}"
+                    }
+                ],
+                "ipRules": []
+            }
+        },
+        "AutomationAccount": {
+            "Name": "shrdsvcs-automation",
+            "Location": "West US 2",
+            "UpdateManagementTimeZone": "America/Chicago"
+        },
+        "LogAnalytics": {
+            "Name": "shrdsvcs-la",
+            "Location": "West US 2"
+        },
+        "RouteTables": {
+            "SharedServices": {
+                "Name": "shrdsvcs-udr",
+                "Routes": [
+                    {
+                        "name": "default",
+                        "properties": {
+                            "addressPrefix": "0.0.0.0/0",
+                            "nextHopIpAddress": "172.0.3.4",
+                            "nextHopType": "VirtualAppliance"
+                        }
+                    },
+                    {
+                        "name": "to-on-premises",
+                        "properties": {
+                            "addressPrefix": "${ArchetypeParameters.Parameters.OnPremisesInformation.Network.AddressPrefix}",
+                            "nextHopType": "VirtualNetworkGateway"
+                        }
+                    }
+                ]
+            }
+        },
+        "ActiveDirectoryDomainServices": {
+            "Name": "adds-vm",
+            "Comments": "Windows VM name cannot exceed 13 characters",
+            "AdminUsername": "${ArchetypeParameters.Parameters.KeyVault.SecretsObject.Secrets[0].secretName}",
+            "DomainAdminUsername": "${ArchetypeParameters.Parameters.KeyVault.SecretsObject.Secrets[1].secretName}",
+            "VMCount": 2,
+            "VMSize": "Standard_DS3_v2",
+            "OSImage": {
+                "offer": "WindowsServer",
+                "publisher": "MicrosoftWindowsServer",
+                "sku": "2016-Datacenter"
+            },
+            "AddsIPAddressStart": "172.0.0.10",
+            "DomainName": "${ArchetypeParameters.Parameters.OnPremisesInformation.ActiveDirectory.DomainName}",
+            "PrimaryDomainControllerIP": "${ArchetypeParameters.Parameters.OnPremisesInformation.ActiveDirectory.PrimaryDomainControllerIP}",
+            "ADSitename": "${ArchetypeParameters.Parameters.OnPremisesInformation.ActiveDirectory.ADSitename}",
+            "DomaincontrollerDriveLetter": "F",
+            "SubnetName": "${ArchetypeParameters.Parameters.VirtualNetwork.Subnets[0].name}"
+        },
+        "Jumpbox": {
+            "AdminUsername": "${ArchetypeParameters.Parameters.KeyVault.SecretsObject.Secrets[0].secretName}",
+            "SubnetName": "${ArchetypeParameters.Parameters.VirtualNetwork.Subnets[0].name}",
+            "Windows": {
+                "Comments": "Windows VM name cannot exceed 13 characters",
+                "Name": "win-jb-vm",
+                "VMCount": 1,
+                "VMSize": "Standard_DS2_v2",
+                "OSImage": {
+                    "offer": "WindowsServer",
+                    "publisher": "MicrosoftWindowsServer",
+                    "sku": "2016-Datacenter"
+                }
+            },
+            "Linux": {
+                "Comments": "Linux VM name cannot exceed 63 characters",
+                "Name": "linux-jb-vm",
+                "VMCount": 1,
+                "VMSize": "Standard_D2s_v3",
+                "OSImage": {
+                    "publisher": "Canonical",
+                    "offer": "UbuntuServer",
+                    "sku": "18.04-LTS",
+                    "version": "latest"
+                }
+            }
+        }
+    }
+}

@@ -11,7 +11,7 @@
         "SubscriptionId": "00000000000000000000000",
         "Location": "West US 2"
     },
-    "ASE-SQL": {
+    "ASE_SQLDB": {
         "Comments": "ASE/SQL Workload subscription and tenant information",
         "TenantId": "00000000000000000000000",
         "SubscriptionId": "00000000000000000000000",
