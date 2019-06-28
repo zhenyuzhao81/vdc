@@ -198,7 +198,16 @@
         "pwdWithoutReversibleEncryptionConfigName": "StorePasswordsUsingReversibleEncryption",
         "pwdMaxAgeConfigName": "MaximumPasswordAge",
         "pwdComplexityConfigName": "PasswordMustMeetComplexityRequirements",
-        "webServerWithTls1.1ConfigName": "AuditSecureProtocol"
+        "webServerWithTls1.1ConfigName": "AuditSecureProtocol",
+        "dnsServers": {
+            "copy": [
+                {
+                    "name": "dnsServers",
+                    "count": "[parameters('virtualMachineCount')]",
+                    "input": "[vdc.nextIP(parameters('addsAddressStart'), copyIndex('dnsServers'))]"
+                }
+            ]
+        }
     },
     "resources": [
         {
@@ -340,6 +349,7 @@
                     "type": "extensions",
                     "name": "[variables('customAddsExtensionName')]",
                     "apiVersion": "2019-03-01",
+                    "condition": false,
                     "location": "[resourceGroup().location]",
                     "dependsOn": [
                         "[resourceId('Microsoft.Compute/virtualMachines', concat(parameters('virtualMachineName'), copyindex(1)))]",
@@ -960,6 +970,7 @@
         {
             "name": "[concat('vm', copyindex(1), 'DSCInstallADDSNestedDeployment')]",
             "type": "Microsoft.Resources/deployments",
+            "condition": false,
             "apiVersion": "2016-09-01",
             "dependsOn": [
                 "vmLoop"
@@ -1072,6 +1083,13 @@
             "value": "[resourceGroup().name]",
             "metadata": {
                 "description": "The Resource Group that was deployed to."
+            }
+        },
+        "dnsServers": {
+            "type": "array",
+            "value": "[variables('dnsServers').dnsServers]",
+            "metadata": {
+                "description": "List of ADDS IPs that will serve as DNS Server List on a Virtual Network"
             }
         }
     }
