@@ -539,8 +539,20 @@ Class AzureResourceManagerDeploymentService: IDeploymentService {
             Get-AzResourceGroupDeployment `
                 -Id $deploymentId;
        
+        # $resourceGroupInformation.Outputs contains a list of custom
+        # objects, if one of these objects is a JSON array, the type of it
+        # will be a JArray, which is an unknown Powershell type, therefore
+        # converting the JArray into a string value (ConvertTo-Json) will 
+        # return an empty array, the reason is because 
+        # ConvertTo-Json doesn't know how to treat a JArray. The solution
+        # is to check the object's type and if is an Array, the code
+        # should create a Powershell array object by using @() syntax. 
+        # Call Format-DeploymentOutputs function, this function
+        # will analyze if there are arrays as outputs, if yes
+        # the function will create a Powershell array.
         $dataToReturn.DeploymentOutputs = `
-            $resourceGroupInformation.Outputs;
+            Format-DeploymentOutputs `
+                -DeploymentOutputs $resourceGroupInformation.Outputs;
        
         return $dataToReturn;
     }

@@ -216,12 +216,14 @@ Function New-Deployment {
         if ($null -ne $moduleConfigurationPolicyDeploymentTemplate) {
                 Write-Debug "About to trigger a deployment";
                 $policyResourceState = `
-                Deploy-AzureResourceManagerTemplate `
+                New-AzureResourceManagerDeployment `
                     -TenantId $subscriptionInformation.TenantId `
                     -SubscriptionId $subscriptionInformation.SubscriptionId `
                     -ResourceGroupName $moduleConfigurationResourceGroupName `
                     -DeploymentTemplate $moduleConfigurationPolicyDeploymentTemplate `
                     -DeploymentParameters $moduleConfigurationPolicyDeploymentParameters `
+                    -ModuleConfiguration $moduleConfiguration.Policies `
+                    -ArchetypeInstanceName $ArchetypeInstanceName `
                     -Location $subscriptionInformation.Location `
                     -Validate:$($Validate.IsPresent);
                 Write-Debug "Deployment complete, Resource state is: $(ConvertTo-Json -Compress $policyResourceState)";
@@ -249,12 +251,14 @@ Function New-Deployment {
         if ($null -ne $moduleConfigurationRBACDeploymentTemplate) {
             Write-Debug "About to trigger a deployment";
             $rbacResourceState = `
-                Deploy-AzureResourceManagerTemplate `
+                New-AzureResourceManagerDeployment `
                     -TenantId $subscriptionInformation.TenantId `
                     -SubscriptionId $subscriptionInformation.SubscriptionId `
                     -ResourceGroupName $moduleConfigurationResourceGroupName `
                     -DeploymentTemplate $moduleConfigurationRBACDeploymentTemplate `
                     -DeploymentParameters $moduleConfigurationRBACDeploymentParameters `
+                    -ModuleConfiguration $moduleConfiguration.RBAC `
+                    -ArchetypeInstanceName $ArchetypeInstanceName `
                     -Location $subscriptionInformation.Location `
                     -Validate:$($Validate.IsPresent);
             Write-Debug "Deployment complete, Resource state is: $(ConvertTo-Json -Compress $rbacResourceState)";
@@ -1047,10 +1051,6 @@ Function Get-RbacDeploymentTemplateFileContents {
     try {
         Write-Debug "Getting RBAC template contents";
 
-        $moduleDefinitionsRootPath = `
-            Get-ParentFolder `
-                -Path $ArchetypeDefinitionPath;
-
         return `
             Get-DeploymentFileContents `
                 -DeploymentConfiguration $DeploymentConfiguration `
@@ -1442,7 +1442,7 @@ Function New-ResourceGroup {
     }
 }
 
-Function Deploy-AzureResourceManagerTemplate {
+Function New-AzureResourceManagerDeployment {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]
@@ -1461,6 +1461,10 @@ Function Deploy-AzureResourceManagerTemplate {
         [string] 
         $DeploymentParameters,
         [Parameter(Mandatory=$true)]
+        $ModuleConfiguration,
+        [Parameter(Mandatory=$true)]
+        $ArchetypeInstanceName,
+        [Parameter(Mandatory=$true)]
         [string] 
         $Location,
         [Parameter(Mandatory=$true)]
@@ -1469,6 +1473,18 @@ Function Deploy-AzureResourceManagerTemplate {
     )
     
     try {
+
+        # Merge the template's parameters json file with
+        # any OverrideParameters
+        $DeploymentParameters = `
+            Merge-Parameters `
+                -DeploymentParameters $DeploymentParameters `
+                -ModuleConfiguration $ModuleConfiguration `
+                -ArchetypeInstanceName $ArchetypeInstanceName `
+                -Operation @{ "False" = "deploy"; "True" = "validate"; }[$Validate.ToString()];
+
+        Write-Debug "Overridden parameters are: $DeploymentParameters";
+
         if($Validate.IsPresent) { 
             Write-Debug "Validating the template";
 
@@ -1494,7 +1510,7 @@ Function Deploy-AzureResourceManagerTemplate {
         }
     }
     catch {
-        Write-Host "An error ocurred while running ModuleConfigurationDeployment.Deploy-AzureResourceManagerTemplate";
+        Write-Host "An error ocurred while running ModuleConfigurationDeployment.New-AzureResourceManagerDeployment";
         Write-Host $_;
         throw $_;
     }
@@ -1750,7 +1766,7 @@ Function Get-ItemFromCache {
     }
 }
 
-Function Merge-Parameters() {
+Function Merge-Parameters {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$false)]
@@ -1783,11 +1799,10 @@ Function Merge-Parameters() {
     # Retrieve the override parameters from the moduleConfiguration.
     # If moduleConfiguration does not have overrideparameters, then
     # assume the override parameters is an empty hashtable.
-    if($moduleConfiguration.Keys -eq "Deployment" `
-            -and $moduleConfiguration.Deployment.Keys -eq "OverrideParameters") {
-            # Retrieve the module instance override parameters
-            $overrideParameters = $moduleConfiguration.Deployment.OverrideParameters;
-        }
+    if($moduleConfiguration.Keys -eq "OverrideParameters") {
+        # Retrieve the module instance override parameters
+        $overrideParameters = $moduleConfiguration.OverrideParameters;
+    }
 
     # Check if the template parameters file has 
     # parameters at the top level and branch accordingly
@@ -2127,8 +2142,38 @@ Function Get-OutputReferenceValue() {
                     -ArchetypeInstanceName $ArchetypeInstanceName;
         }
 
+        Write-Debug "Output is: $(ConvertTo-Json $resolvedOutput)";
+        Write-Debug "Output type is $($resolvedOutput.GetType())";
+        
         # Did we resolve the output?
-        if($resolvedOutput `
+        if ($resolvedOutput `
+            -and $resolvedOutput -is [object[]]){
+            Write-Debug "Replacing an array";
+            
+            # Since is an array, let's replace the reference function
+            # including double quotes or single quotes
+            $tempfullReferenceFunctionString1 = `
+                """$fullReferenceFunctionString""";
+
+            $tempfullReferenceFunctionString2 = `
+                "'$fullReferenceFunctionString'";
+
+            $resolvedOutputString = `
+                ConvertTo-Json `
+                    -InputObject $resolvedOutput `
+                    -Depth 100 `
+                    -Compress;
+
+            $parameterValueString = `
+                $parameterValueString.Replace(
+                    $tempfullReferenceFunctionString1, 
+                    $resolvedOutputString
+                ).Replace(
+                    $tempfullReferenceFunctionString2,
+                    $resolvedOutputString
+                );
+        }
+        elseif($resolvedOutput `
             -and $resolvedOutput -isnot [string]) {
             
             Write-Debug "Converting object into a JSON string";
@@ -2217,12 +2262,19 @@ Function Get-OutputFromStateStore() {
     )
     Write-Debug "All filters: $(ConvertTo-Json $Filters)";
 
-    # Start by retrieving all the outputs for the archetype and/or module instance combination
+    # Start by retrieving all the outputs for the archetype and/or module 
+    # instance combination
+
+    $crossArchetypeOutputs = $false;
+
     if($Filters.Count -ge 3) {
+        # If there are three segments, we are in a cross archetype scenario
         $archetypeInstanceName = $Filters[0];
         $moduleConfigurationName = $Filters[1];
+        $crossArchetypeOutputs = $true;
     }
     elseif($Filters.Count -eq 2) {
+        # If there are two segments, we are in the same archetype scenario
         $archetypeInstanceName = $ArchetypeInstanceName;
         $moduleConfigurationName = $Filters[0];
     }
@@ -2244,24 +2296,51 @@ Function Get-OutputFromStateStore() {
     $outputParameterName = `
         $Filters[$outputPathArray.Count -1];
 
+    Write-Debug "Output to be searched: $outputParameterName";
+
     if ($null -ne $allOutputs) {
         Write-Debug "Outputs found, proceed to cache the values";
+
+        # Let's format the deployment outputs, this function
+        # will create a Powershell Array when a JArray is found
+        # as a deployment output. This is true when a deployment
+        # output has a type = "array"
+
+        $allOutputs = `
+            Format-DeploymentOutputs `
+                -DeploymentOutputs $allOutputs;
+
+        Write-Debug "Formatted deployment outputs: $(ConvertTo-Json $allOutputs -Depth 10)";
 
         $allOutputs.Keys | ForEach-Object {
             $parameterName = $_;
             # Doing .Value because is a deployment output parameter
             $parameterValue = $allOutputs.$parameterName.Value;
-            Write-Debug "Cache Key: $($moduleConfigurationName.$parameterName)";
-            Write-Debug "Cache Value is: $parameterValue";
+
+            if ($crossArchetypeOutputs) {
+                $cacheKey = `
+                    "$archetypeInstanceName.$moduleConfigurationName.$parameterName";
+            }
+            else {
+                $cacheKey = `
+                    "$moduleConfigurationName.$parameterName";
+            }
+            
+            Write-Debug "Cache Key: $cacheKey";
+            Write-Debug "Cache Value is: $(ConvertTo-Json $parameterValue)";
             # Cache the retrieved value by calling set method on cache data service with key and value
             $cacheDataService.SetByKey(
-                "$moduleConfigurationName.$parameterName",
+                $cacheKey,
                 $parameterValue);
         }
 
         # Find the specific output 
         if($allOutputs.Keys -eq $outputParameterName) {
-            return $allOutputs.$outputParameterName.Value;
+            $output = $allOutputs.$outputParameterName.Value;
+
+            Write-Debug "Ouput found, parameter: $outputParameterName and its value is: $(ConvertTo-Json $output)";
+            Write-Debug "Output type is: $($output.GetType())";
+            return $output;
         }
         else {
             return $null;
@@ -2277,8 +2356,7 @@ Function Get-OutputFromStateStore() {
 # In order to allow the module to be imported (Import-Module), let's
 # verify if the mandatory parameters are not passed.
 
-if (![string]::IsNullOrEmpty($ArchetypeInstanceName) -and `
-    ![string]::IsNullOrEmpty($ArchetypeDefinitionPath)) {
+if (![string]::IsNullOrEmpty($ArchetypeDefinitionPath)) {
         New-Deployment `
             -ArchetypeDefinitionPath $ArchetypeDefinitionPath `
             -ArchetypeInstanceName $ArchetypeInstanceName `
