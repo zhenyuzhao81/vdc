@@ -215,3 +215,92 @@ Function Get-PowershellEnvironmentVariable {
         throw $_;
     }
 }
+
+Function Format-DeploymentOutputs {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$false)]
+        [object]
+        $DeploymentOutputs
+    )
+
+    try {
+        $outputs = @{};
+        Write-Debug "Deployment outputs type is: $($DeploymentOutputs.GetType())";
+        if ($null -ne $DeploymentOutputs) {
+            # DeploymentOutputs are exposed as a Dictionary
+            if (!$DeploymentOutputs.GetType().`
+                ToString().`
+                ToLower().`
+                Contains("system.collections.generic.dictionary") -and
+                !$DeploymentOutputs.GetType().`
+                ToString().`
+                ToLower().`
+                Contains("hashtable"))
+            {
+                throw "Outputs must be a Hashtable or Dictionary type";
+            }
+
+            $DeploymentOutputs.Keys | ForEach-Object {
+                $key = $_;
+                
+                # We use .Type because a deployment output contains two
+                # keys, .Type and .Value.
+                if ($DeploymentOutputs.$key.Type.Equals(
+                    "Array", 
+                    [StringComparison]::InvariantCultureIgnoreCase)) {
+                
+                    # We are in a case that a deployment output is an array
+                    # let's convert the string into a JSON object, let's 
+                    # loop through it and append the items into a temp array
+                    $outputAsArray = @();
+                    
+                    # Create a new Powershell array only when the type is JArray
+                    if ($DeploymentOutputs.$key.Value.GetType().`
+                        ToString().`
+                        ToLower().`
+                        Contains("jarray")){
+                        $DeploymentOutputs.$key.Value.ToString() | ConvertFrom-Json `
+                        | ForEach-Object {
+                            $outputAsArray += $_;
+                        }
+                    }
+                    else {
+                        # Otherwise we assume that the Value's type is System.Object[]
+                        # This is true when we are getting deployment outputs from
+                        # the data store, the data store will read the contents of
+                        # a file and will invoke ConvertFrom-Json to create a set of
+                        # valid objects
+                        $outputAsArray = $DeploymentOutputs.$key.Value;
+                    }
+                    
+                    
+                    $outputs += @{
+                        $key = @{
+                            "Type" = "Array"
+                            "Value" = $outputAsArray
+                        }
+                    };
+                }
+                else {
+                    $outputs += @{
+                        $key = @{
+                            "Type" = $DeploymentOutputs.$key.Type
+                            "Value" = $DeploymentOutputs.$key.Value
+                        }
+                    }
+                }
+            }
+            return $outputs;
+        }
+        else {
+            # No outputs, return null;
+            return $null;
+        }
+    }
+    catch {
+        Write-Host "An error ocurred while running Format-DeploymentOutputs";
+        Write-Host $_;
+        throw $_;
+    }
+}
