@@ -1,6 +1,7 @@
 {
     "InstanceName": "fabrikam-shrdsvcs",
     "Subscription": "SharedServices",
+    "Organization": "file(../common/archetypeOrganization.txt)",
     "Parameters": {
         "TenantId": "${Subscriptions.SharedServices.TenantId}",
         "DeploymentUserId": "env(DEPLOYMENT_USER_ID)",
@@ -20,7 +21,7 @@
             },
             "SubscriptionId": "${Subscriptions.OnPremises.SubscriptionId}"
         },
-        "ArtifactsStorageAccount": "file(../common/artifactsStorageAccount)",
+        "ArtifactsStorageAccount": "file(../common/artifactsStorageAccount.json)",
         "DiagnosticStorageAccount": {
             "Name": "shrdsvcsdiagnostic01",
             "Sku": "Standard_GRS",

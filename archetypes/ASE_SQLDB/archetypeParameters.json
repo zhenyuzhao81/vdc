@@ -61,12 +61,11 @@
                     ]
                 }
             ],
-            "DnsServers": [
-                "reference()"
-            ]
+            "DnsServers": "reference(fabrikam-shrdsvcs.ADDS.dnsServers)"
         },
         "ApplicationSecurityGroups": {},
         "NetworkSecurityGroups": "file(Network/networkSecurityGroups.json)",
+        "RouteTables": "file(Network/routeTables.json)",
         "KeyVault": {
             "Name": "shrdsvcs-akv02",
             "Sku": "Premium",
@@ -96,10 +95,6 @@
                     {
                         "secretName": "admin-user",
                         "secretValue": "env(ADMIN_USER_PWD)"
-                    },
-                    {
-                        "secretName": "${ArchetypeParameters.Parameters.OnPremisesInformation.ActiveDirectory.DomainAdminUserName}",
-                        "secretValue": "env(DOMAIN_ADMIN_USER_PWD)"
                     }
                 ]
             },
@@ -114,82 +109,15 @@
                 "ipRules": []
             }
         },
-        "AutomationAccount": {
-            "Name": "shrdsvcs-automation",
-            "Location": "West US 2",
-            "UpdateManagementTimeZone": "America/Chicago"
-        },
         "LogAnalytics": {
-            "Name": "shrdsvcs-la",
+            "Name": "ase-sqldb-la",
             "Location": "West US 2"
         },
-        "RouteTables": {
-            "SharedServices": {
-                "Name": "shrdsvcs-udr",
-                "Routes": [
-                    {
-                        "name": "default",
-                        "properties": {
-                            "addressPrefix": "0.0.0.0/0",
-                            "nextHopIpAddress": "172.0.3.4",
-                            "nextHopType": "VirtualAppliance"
-                        }
-                    },
-                    {
-                        "name": "to-on-premises",
-                        "properties": {
-                            "addressPrefix": "${ArchetypeParameters.Parameters.OnPremisesInformation.Network.AddressPrefix}",
-                            "nextHopType": "VirtualNetworkGateway"
-                        }
-                    }
-                ]
-            }
+        "SQLDB": {
+
         },
-        "ActiveDirectoryDomainServices": {
-            "Name": "adds-vm",
-            "Comments": "Windows VM name cannot exceed 13 characters",
-            "AdminUsername": "${ArchetypeParameters.Parameters.KeyVault.SecretsObject.Secrets[0].secretName}",
-            "DomainAdminUsername": "${ArchetypeParameters.Parameters.KeyVault.SecretsObject.Secrets[1].secretName}",
-            "VMCount": 2,
-            "VMSize": "Standard_DS3_v2",
-            "OSImage": {
-                "offer": "WindowsServer",
-                "publisher": "MicrosoftWindowsServer",
-                "sku": "2016-Datacenter"
-            },
-            "AddsIPAddressStart": "172.0.0.10",
-            "DomainName": "${ArchetypeParameters.Parameters.OnPremisesInformation.ActiveDirectory.DomainName}",
-            "PrimaryDomainControllerIP": "${ArchetypeParameters.Parameters.OnPremisesInformation.ActiveDirectory.PrimaryDomainControllerIP}",
-            "ADSitename": "${ArchetypeParameters.Parameters.OnPremisesInformation.ActiveDirectory.ADSitename}",
-            "DomaincontrollerDriveLetter": "F",
-            "SubnetName": "${ArchetypeParameters.Parameters.VirtualNetwork.Subnets[0].name}"
-        },
-        "Jumpbox": {
-            "AdminUsername": "${ArchetypeParameters.Parameters.KeyVault.SecretsObject.Secrets[0].secretName}",
-            "SubnetName": "${ArchetypeParameters.Parameters.VirtualNetwork.Subnets[0].name}",
-            "Windows": {
-                "Comments": "Windows VM name cannot exceed 13 characters",
-                "Name": "win-jb-vm",
-                "VMCount": 1,
-                "VMSize": "Standard_DS2_v2",
-                "OSImage": {
-                    "offer": "WindowsServer",
-                    "publisher": "MicrosoftWindowsServer",
-                    "sku": "2016-Datacenter"
-                }
-            },
-            "Linux": {
-                "Comments": "Linux VM name cannot exceed 63 characters",
-                "Name": "linux-jb-vm",
-                "VMCount": 1,
-                "VMSize": "Standard_D2s_v3",
-                "OSImage": {
-                    "publisher": "Canonical",
-                    "offer": "UbuntuServer",
-                    "sku": "18.04-LTS",
-                    "version": "latest"
-                }
-            }
+        "AppServiceEnvironment": {
+            
         }
     }
 }

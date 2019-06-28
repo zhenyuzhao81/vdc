@@ -228,6 +228,7 @@ Function New-Deployment {
                 -DeploymentConfiguration $moduleConfiguration.Policies `
                 -ModuleConfigurationsPath $archetypeInstanceJson.Orchestration.ModuleConfigurationsPath `
                 -WorkingDirectory $defaultWorkingDirectory;
+<<<<<<< HEAD
             Write-Debug "Policy Deployment template contents is: $moduleConfigurationPolicyDeploymentTemplate";
 
             $moduleConfigurationPolicyDeploymentParameters = `
@@ -257,6 +258,30 @@ Function New-Deployment {
             else {
                 Write-Debug "No Policy deployment";
             }
+=======
+        Write-Debug "Policy Deployment parameters contents is: $moduleConfigurationPolicyDeploymentParameters";
+
+        $policyResourceState = @{};
+
+        if ($null -ne $moduleConfigurationPolicyDeploymentTemplate) {
+                Write-Debug "About to trigger a deployment";
+                $policyResourceState = `
+                New-AzureResourceManagerDeployment `
+                    -TenantId $subscriptionInformation.TenantId `
+                    -SubscriptionId $subscriptionInformation.SubscriptionId `
+                    -ResourceGroupName $moduleConfigurationResourceGroupName `
+                    -DeploymentTemplate $moduleConfigurationPolicyDeploymentTemplate `
+                    -DeploymentParameters $moduleConfigurationPolicyDeploymentParameters `
+                    -ModuleConfiguration $moduleConfiguration.Policies `
+                    -ArchetypeInstanceName $ArchetypeInstanceName `
+                    -Location $subscriptionInformation.Location `
+                    -Validate:$($Validate.IsPresent);
+                Write-Debug "Deployment complete, Resource state is: $(ConvertTo-Json -Compress $policyResourceState)";
+        }
+        else {
+            Write-Debug "No Policy deployment";
+        }
+>>>>>>> added infra baseline to ASE/SQL deployment
 
             $moduleConfigurationRBACDeploymentTemplate = `
                 Get-RbacDeploymentTemplateFileContents `
@@ -274,6 +299,7 @@ Function New-Deployment {
 
             $rbacResourceState = @{};
 
+<<<<<<< HEAD
             if ($null -ne $moduleConfigurationRBACDeploymentTemplate) {
                 Write-Debug "About to trigger a deployment";
                 $rbacResourceState = `
@@ -292,6 +318,25 @@ Function New-Deployment {
             else {
                 Write-Debug "No RBAC deployment";
             }
+=======
+        if ($null -ne $moduleConfigurationRBACDeploymentTemplate) {
+            Write-Debug "About to trigger a deployment";
+            $rbacResourceState = `
+                New-AzureResourceManagerDeployment `
+                    -TenantId $subscriptionInformation.TenantId `
+                    -SubscriptionId $subscriptionInformation.SubscriptionId `
+                    -ResourceGroupName $moduleConfigurationResourceGroupName `
+                    -DeploymentTemplate $moduleConfigurationRBACDeploymentTemplate `
+                    -DeploymentParameters $moduleConfigurationRBACDeploymentParameters `
+                    -ModuleConfiguration $moduleConfiguration.RBAC `
+                    -ArchetypeInstanceName $ArchetypeInstanceName `
+                    -Location $subscriptionInformation.Location `
+                    -Validate:$($Validate.IsPresent);
+            Write-Debug "Deployment complete, Resource state is: $(ConvertTo-Json -Compress $rbacResourceState)";
+        }
+        else {
+            Write-Debug "No RBAC deployment";
+>>>>>>> added infra baseline to ASE/SQL deployment
         }
 
         # This deployment runs last because it could be
