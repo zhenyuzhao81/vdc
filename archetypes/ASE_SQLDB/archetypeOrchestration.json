@@ -1,7 +1,6 @@
 {
     "ModuleConfigurationsPath": "../../modules",
-    "ModuleConfigurations": [
-        {
+    "ModuleConfigurations": [{
             "Name": "DiagnosticStorageAccount",
             "ModuleDefinitionName": "StorageAccounts",
             "ResourceGroupName": "fabrikam-ase-sqldb-diagnostics-rg",
@@ -127,23 +126,39 @@
             "ResourceGroupName": "fabrikam-ase-sqldb-network-rg",
             "Deployment": {
                 "OverrideParameters": {
-                    "vnetName": {
-                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.Name}"
+                    "localVnetName": {
+                        "value": "reference(VirtualNetwork.vNetName)"
                     },
-                    "vnetAddressPrefixes": {
-                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.AddressPrefixes}"
+                    "peeringName": {
+                        "value": "ase-sqldb-to-shrdsvcs"
                     },
-                    "dnsServers": {
-                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.DnsServers}"
+                    "remoteVirtualNetworkId": {
+                        "value": "reference(fabrikam-shrdsvcs.VirtualNetwork.vNetResourceId)"
+                    }
+                }
+            }
+        },
+        {
+            "Name": "SharedSvcsVirtualNetworkPeering",
+            "ModuleDefinitionName": "vNetPeering",
+            "Subscription": "SharedServices",
+            "ResourceGroupName": "fabrikam-shrdsvcs-network-rg",
+            "Deployment": {
+                "OverrideParameters": {
+                    "localVnetName": {
+                        "value": "reference(fabrikam-shrdsvcs.VirtualNetwork.vNetName)"
                     },
-                    "subnets": {
-                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.Subnets}"
+                    "peeringName": {
+                        "value": "shrdsvcs-to-ase-sqldb"
                     },
-                    "enableDdosProtection": {
-                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.EnableDdosProtection}"
+                    "remoteVirtualNetworkId": {
+                        "value": "reference(${ArchetypeParameters.InstanceName}.VirtualNetwork.vNetResourceId)"
                     },
-                    "enableVmProtection": {
-                        "value": false
+                    "allowGatewayTransit": {
+                        "value": true
+                    },
+                    "useRemoteGateways": {
+                        "value": false    
                     }
                 }
             }
