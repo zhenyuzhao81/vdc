@@ -32,6 +32,7 @@ $cacheDataService = $null;
 $auditDataService = $null;
 $moduleStateDataService = $null;
 $configurationBuilder = $null;
+$customScriptExecutor = $null
 $factory = $null;
 $defaultLocation = "West US";
 $defaultSupportedVersion = 2.0;
@@ -90,8 +91,8 @@ Function New-Deployment {
         $moduleStateDataService = `
             $factory.GetInstance('IModuleStateDataService');
 
-        $configurationBuilder = `
-            $factory.GetInstance('ConfigurationBuilder');
+        $customScriptExecutor = `
+            $factory.GetInstance('CustomScriptExecutor');
         
         # Contruct the archetype instance object only if it is not already
         # cached
@@ -279,21 +280,35 @@ Function New-Deployment {
                 -ModuleConfigurationsPath $archetypeInstanceJson.ArchetypeOrchestration.ModuleConfigurationsPath `
                 -WorkingDirectory $defaultWorkingDirectory;
         Write-Debug "Deployment parameters contents are: $moduleConfigurationDeploymentParameters";
-
-        Write-Debug "About to trigger a deployment";
-        $resourceState = `
-            New-AzureResourceManagerDeployment `
-                -TenantId $subscriptionInformation.TenantId `
-                -SubscriptionId $subscriptionInformation.SubscriptionId `
-                -ResourceGroupName $moduleConfigurationResourceGroupName `
-                -DeploymentTemplate $moduleConfigurationDeploymentTemplate `
-                -DeploymentParameters $moduleConfigurationDeploymentParameters `
-                -ModuleConfiguration $moduleConfiguration.Deployment `
-                -ArchetypeInstanceName $ArchetypeInstanceName `
-                -Location $subscriptionInformation.Location `
-                -Validate:$($Validate.IsPresent);
-        Write-Debug "Deployment complete, Resource state is: $(ConvertTo-Json -Compress $resourceState)";
         
+        if ($null -ne $moduleConfigurationDeploymentTemplate) {
+            Write-Debug "About to trigger a deployment";
+            $resourceState = `
+                New-AzureResourceManagerDeployment `
+                    -TenantId $subscriptionInformation.TenantId `
+                    -SubscriptionId $subscriptionInformation.SubscriptionId `
+                    -ResourceGroupName $moduleConfigurationResourceGroupName `
+                    -DeploymentTemplate $moduleConfigurationDeploymentTemplate `
+                    -DeploymentParameters $moduleConfigurationDeploymentParameters `
+                    -ModuleConfiguration $moduleConfiguration.Deployment `
+                    -ArchetypeInstanceName $ArchetypeInstanceName `
+                    -Location $subscriptionInformation.Location `
+                    -Validate:$($Validate.IsPresent);
+            Write-Debug "Deployment complete, Resource state is: $(ConvertTo-Json -Compress $resourceState)";
+        }
+
+        # Runs a custom script only if Script property is present and
+        # we are not in Validation mode
+        if($null -ne $ModuleConfiguration.Script `
+            -and `
+           $null -ne $ModuleConfiguration.Script.Command `
+           -and `
+           !$Validate.IsPresent) {
+            $resourceState = `
+                Start-CustomScript `
+                    -ModuleConfiguration $moduleConfiguration;
+        }
+
         if(!$Validate.IsPresent) {
             # If there are deployment outputs, cache the values
             if ($null -ne $resourceState.DeploymentOutputs) {
@@ -390,6 +405,48 @@ Function Get-WorkingDirectory {
     }
     catch {
         Write-Host "An error ocurred while running Get-WorkingDirectory";
+        Write-Host $_;
+        throw $_;
+    }
+}
+
+Function Start-CustomScript {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $ModuleConfiguration
+    )
+
+    try {
+        # Execute the script by calling Execute method
+        $scriptOutput = $customScriptExecutor.Execute(
+            $ModuleConfiguration.Script.Command, 
+            $ModuleConfiguration.Script.Arguments
+            );
+
+        # Returning the minimal resource state object
+        $resourceState += @{
+            DeploymentId = [Guid]::NewGuid()
+            DeploymentName = [Guid]::NewGuid().ToString()
+            ResourceStates = @()
+            ResourceIds = @()
+            ResourceGroupName = $null
+            DeploymentTemplate = $null
+            DeploymentParameters = $null
+            Type="CustomScript"
+            DeploymentOutputs = @{
+                "Output" = @{ 
+                    "Value" = $scriptOutput;
+                }
+            }
+        }
+
+        # Return the result of script execution
+        return $resourceState;
+    }
+    catch {
+        Write-Host "An error ocurred while running Start-CustomScript";
         Write-Host $_;
         throw $_;
     }
@@ -1482,13 +1539,13 @@ Function New-DeploymentStateInformation {
         [Parameter(Mandatory=$true)]
         [object]
         $ResourceIds,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
         [string]
         $ResourceGroupName,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
         [object]
         $DeploymentTemplate,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
         [object]
         $DeploymentParameters,
         [Parameter(Mandatory=$false)]
