@@ -43,14 +43,14 @@
         "Publishing"
       ],
       "metadata": {
-        "description": "Optional. Specifies which endpoints to serve internally in the Virtual Network for the App Service Environment."
+        "description": "Optional. Specifies which endpoints to serve internally in the Virtual Network for the App Service Environment. If using a custom DnsSuffix, this value *must* be set to Web"
       }
     },
     "ipSSLAddressCount": {
       "type": "int",
       "defaultValue": 1,
       "metadata": {
-        "description": "Optional. Number of IP addresses reserved for the App Service Environment.  This value *must* be zero when internalLoadBalancing mode is set to either None or Publishing."
+        "description": "Optional. Number of IP addresses reserved for the App Service Environment.  This value *must* be zero when internalLoadBalancing mode is set to either Web or Publishing."
       }
     },
     "multiSize": {
@@ -69,47 +69,41 @@
     },
     "workerPools": {
       "type": "array",
-      "defaultValue": [
-        {
-          "workerSizeId": 0,
-          "workerSize": "Small",
-          "workerCount": "2"
-        }
-      ],
+      "defaultValue": [{
+        "workerSizeId": 0,
+        "workerSize": "Small",
+        "workerCount": "2"
+      }],
       "metadata": {
         "description": "Optional. Description of worker pools with worker size IDs, VM sizes, and number of workers in each pool."
       }
     }
   },
-  "variables": { },
-  "resources": [
-    {
-      "apiVersion": "2016-09-01",
-      "type": "Microsoft.Web/hostingEnvironments",
+  "variables": {},
+  "resources": [{
+    "apiVersion": "2016-09-01",
+    "type": "Microsoft.Web/hostingEnvironments",
+    "name": "[parameters('appServiceEnvironmentName')]",
+    "kind": "ASEV2",
+    "location": "[resourceGroup().location]",
+    "properties": {
       "name": "[parameters('appServiceEnvironmentName')]",
-      "kind": "ASEV2",
       "location": "[resourceGroup().location]",
-      "properties": {
-        "name": "[parameters('appServiceEnvironmentName')]",
-        "location": "[resourceGroup().location]",
-        "multiSize": "[parameters('multiSize')]",
-        "multiRoleCount": "[parameters('multiRoleCount')]",
-        "workerPools": "[parameters('workerPools')]",
-
-        "vnetResourceGroupName": "[parameters('vnetResourceGroup')]",
-        "vnetName": "[parameters('vnetName')]",
-        "vnetSubnetName": "[parameters('subnetName')]",
-        "virtualNetwork": {
-            "id": "[resourceId(parameters('vnetResourceGroup'), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
-            "subnet": "[parameters('subnetName')]"
-        },
-
-        "dnsSuffix": "[if(or(empty(parameters('dnsSuffix')), equals(parameters('dnsSuffix'), json('null'))), json('null'), parameters('dnsSuffix'))]",
-        "ipSSLAddressCount": "[parameters('ipSSLAddressCount')]",
-        "internalLoadBalancingMode": "[parameters('internalLoadBalancingMode')]"
-      }
+      "multiSize": "[parameters('multiSize')]",
+      "multiRoleCount": "[parameters('multiRoleCount')]",
+      "workerPools": "[parameters('workerPools')]",
+      "vnetResourceGroupName": "[parameters('vnetResourceGroup')]",
+      "vnetName": "[parameters('vnetName')]",
+      "vnetSubnetName": "[parameters('subnetName')]",
+      "virtualNetwork": {
+        "id": "[resourceId(parameters('vnetResourceGroup'), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
+        "subnet": "[parameters('subnetName')]"
+      },
+      "dnsSuffix": "[if(or(empty(parameters('dnsSuffix')), equals(parameters('dnsSuffix'), json('null'))), json('null'), parameters('dnsSuffix'))]",
+      "ipSSLAddressCount": "[parameters('ipSSLAddressCount')]",
+      "internalLoadBalancingMode": "[parameters('internalLoadBalancingMode')]"
     }
-  ],
+  }],
   "outputs": {
     "appServiceEnvironmentResourceGroup": {
       "type": "string",

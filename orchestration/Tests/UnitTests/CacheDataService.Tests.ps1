@@ -69,9 +69,9 @@ Describe  "Cache Data Service Unit Test Cases" {
 
     Context "Cache Data Service using Local Cache Repository" {
         BeforeEach {
-            $azureDevOpsRepository = New-Object LocalCacheRepository;
-            $cacheDataService = New-Object CacheDataService -ArgumentList $azureDevOpsRepository;
-            $cacheKey = 'vdc.cache.sas-key';
+            $localCacheRepository = New-Object LocalCacheRepository;
+            $cacheDataService = New-Object CacheDataService -ArgumentList $localCacheRepository;
+            $cacheKey = 'VDC.CACHE.SAS-KEY';
             $cacheValue = 'erltowhtgf88934n34iruf348jkn34843fnv74';
         }
 
@@ -82,7 +82,8 @@ Describe  "Cache Data Service Unit Test Cases" {
             $cacheData | Should Be $cacheValue;
         }
 
-        It "Should retreive cache data by valid key" {
+        It "Should retrieve cache data by valid key" {
+            $cacheDataService.SetByKey($cacheKey, $cacheValue);
             $cacheData = $cacheDataService.GetByKey($cacheKey);
             $cacheData | Should Not Be $null;
         }
