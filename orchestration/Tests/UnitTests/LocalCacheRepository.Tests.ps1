@@ -21,7 +21,7 @@ $script = [scriptblock]::Create($scriptBlock);
 Describe  "Azure DevOps Cache Repository Unit Test Cases" {
 
     Context "Local Cache Repository" {
-        BeforeEach {
+        BeforeAll {
             $dummyValue = "contoso-storage";
             $localCacheRepository = `
                 New-Object LocalCacheRepository;

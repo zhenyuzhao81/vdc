@@ -35,7 +35,7 @@ Describe  "Audit Data Service Unit Test Cases" {
     Context "Save audit trail" {
         BeforeEach {
             $localAuditRepository = `
-                New-Object LocalStorageAuditRepository;
+                New-Object LocalStorageAuditRepository($rootPath);
             $auditDataService = [DeploymentAuditDataService]::new($localAuditRepository);
         }
 
@@ -54,7 +54,7 @@ Describe  "Audit Data Service Unit Test Cases" {
                                                         (New-Guid).Guid,
                                                         @{},
                                                         'ArchetypeInstanceName');
-            $auditId| Should Not Be $null;
+            $auditId | Should Not Be $null;
         }
     }
 
