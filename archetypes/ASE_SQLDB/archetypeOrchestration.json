@@ -158,7 +158,7 @@
                         "value": true
                     },
                     "useRemoteGateways": {
-                        "value": false    
+                        "value": false
                     }
                 }
             }
@@ -222,6 +222,81 @@
                     }
                 }
             }
+        },
+        {
+            "Name": "ASE",
+            "ModuleDefinitionName": "AppServiceEnvironments",
+            "ResourceGroupName": "fabrikam-ase-rg",
+            "Deployment": {
+                "OverrideParameters": {
+                    "dnsSuffix": {
+                        "value": "${ArchetypeParameters.Parameters.AppServiceEnvironment.DnsSuffix}"
+                    },
+                    "appServiceEnvironmentName": {
+                        "value": "${ArchetypeParameters.Parameters.AppServiceEnvironment.Name}"
+                    },
+                    "internalLoadBalancingMode": {
+                        "value": "${ArchetypeParameters.Parameters.AppServiceEnvironment.InternalLoadBalancingMode}"
+                    },
+                    "ipSSLAddressCount": {
+                        "value": 0
+                    },
+                    "vnetResourceGroup": {
+                        "value": "reference(VirtualNetwork.vNetResourceGroup)"
+                    },
+                    "vnetName": {
+                        "value": "reference(VirtualNetwork.vNetName)"
+                    }
+                }
+            }
+        },
+        {
+            "Name": "ASEServicePlan",
+            "ModuleDefinitionName": "AppServicePlan",
+            "ResourceGroupName": "fabrikam-ase-rg",
+            "Deployment": {
+                "OverrideParameters": {
+                    "appServicePlanName": {
+                        "value": "fabrikam-ase-webapp-plan01"
+                    },
+                    "appServiceEnvironmentId": {
+                        "value": "reference(ASE.appServiceEnvironmentResourceId)"
+                    },
+                    "sku": {
+                        "value": "${ArchetypeParameters.Parameters.AppServicePlan.Sku}"
+                    }
+                }
+            }
+        },
+        {
+            "Name": "ASEWebApp",
+            "ModuleDefinitionName": "AppServiceWebApp",
+            "ResourceGroupName": "fabrikam-ase-rg",
+            "Deployment": {
+                "OverrideParameters": {
+                    "appServicePlanId": {
+                        "value": "reference(ASEServicePlan.appServicePlanResourceId)"
+                    },
+                    "appServiceEnvironmentId": {
+                        "value": "reference(ASE.appServiceEnvironmentResourceId)"
+                    },
+                    "appServiceWebAppName": {
+                        "value": "${ArchetypeParameters.Parameters.AppServiceWebApp.Name}"
+                    }
+                }
+            }
+        },
+        {
+            "Name": "SQLDBServer",
+            "ModuleDefinitionName": "SQLDB",
+            "ResourceGroupName": "fabrikam-sqldb-rg",
+            "Deployment": {}
+        },
+        {
+            "Name": "SQLDatabase",
+            "ModuleDefinitionName": "SQLDatabase",
+            "ResourceGroupName": "fabrikam-sqldb-rg",
+            "Deployment": {}
         }
     ]
 }
