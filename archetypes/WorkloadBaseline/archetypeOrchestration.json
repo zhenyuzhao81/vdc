@@ -1,0 +1,183 @@
+{
+    "ModuleConfigurationsPath": "../../modules",
+    "ModuleConfigurations": [{
+            "Name": "DiagnosticStorageAccount",
+            "ModuleDefinitionName": "StorageAccounts",
+            "ResourceGroupName": "${ArchetypeParameters.DiagnosticStorageAccount.ResourceGroupName}",
+            "Comments": "Storage Account that is used to store Diagnostic information of VMs and Non-VM resources",
+            "Version": "2.0",
+            "Policies": {
+                "Comments": "Policies is Optional - If no object is specified, no Policies deployment will occur",
+                "OverrideParameters": {
+                    "effect": {
+                        "value": "Deny"
+                    },
+                    "resourceGroup": {
+                        "value": "fabrikam-ase-sqldb-diagnostics-rg"
+                    },
+                    "resourceGroupLocation": {
+                        "value": "West US 2"
+                    }
+                }
+            },
+            "Deployment": {
+                "Comments": "We need the 'update' module instance to lock this resource after the Virtual Network got created",
+                "TemplatePath": "../../modules/StorageAccounts/2.0/deploy.json",
+                "OverrideParameters": {
+                    "storageAccountName": {
+                        "value": "${ArchetypeParameters.Parameters.DiagnosticStorageAccount.Name}"
+                    },
+                    "storageAccountSku": {
+                        "value": "${ArchetypeParameters.Parameters.DiagnosticStorageAccount.Sku}"
+                    }
+                }
+            }
+        },
+        {
+            "Name": "LogAnalytics",
+            "ModuleDefinitionName": "LogAnalytics",
+            "ResourceGroupName": "fabrikam-ase-sqldb-diagnostics-rg",
+            "Deployment": {
+                "OverrideParameters": {
+                    "logAnalyticsWorkspaceName": {
+                        "value": "${ArchetypeParameters.Parameters.LogAnalytics.Name}"
+                    },
+                    "diagnosticStorageAccountName": {
+                        "value": "reference(DiagnosticStorageAccount.storageAccountName)"
+                    },
+                    "diagnosticStorageAccountId": {
+                        "value": "reference(DiagnosticStorageAccount.storageAccountResourceId)"
+                    },
+                    "diagnosticStorageAccountAccessKey": {
+                        "value": "reference(DiagnosticStorageAccount.storageAccountAccessKey)"
+                    },
+                    "location": {
+                        "value": "${ArchetypeParameters.Parameters.LogAnalytics.Location}"
+                    }
+                }
+            }
+        },
+        {
+            "Name": "DefaultNSG",
+            "ModuleDefinitionName": "NetworkSecurityGroups",
+            "ResourceGroupName": "fabrikam-ase-sqldb-network-rg",
+            "Deployment": {
+                "OverrideParameters": {
+                    "workspaceId": {
+                        "value": "reference(LogAnalytics.logAnalyticsWorkspaceResourceId)"
+                    },
+                    "diagnosticStorageAccountId": {
+                        "value": "reference(DiagnosticStorageAccount.storageAccountResourceId)"
+                    },
+                    "networkSecurityGroupName": {
+                        "value": "${ArchetypeParameters.Parameters.NetworkSecurityGroups.Default.Name}"
+                    },
+                    "networkSecurityGroupSecurityRules": {
+                        "value": "${ArchetypeParameters.Parameters.NetworkSecurityGroups.Default.Rules}"
+                    }
+                }
+            }
+        },
+        {
+            "Name": "DefaultRouteTable",
+            "ModuleDefinitionName": "RouteTables",
+            "ResourceGroupName": "fabrikam-ase-sqldb-network-rg",
+            "Deployment": {
+                "OverrideParameters": {
+                    "routeTableName": {
+                        "value": "${ArchetypeParameters.Parameters.RouteTables.Default.Name}"
+                    },
+                    "routes": {
+                        "value": "${ArchetypeParameters.Parameters.RouteTables.Default.Routes}"
+                    }
+                }
+            }
+        },
+        {
+            "Name": "VirtualNetwork",
+            "ModuleDefinitionName": "vNet",
+            "ResourceGroupName": "fabrikam-ase-sqldb-network-rg",
+            "Deployment": {
+                "OverrideParameters": {
+                    "vnetName": {
+                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.Name}"
+                    },
+                    "vnetAddressPrefixes": {
+                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.AddressPrefixes}"
+                    },
+                    "dnsServers": {
+                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.DnsServers}"
+                    },
+                    "subnets": {
+                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.Subnets}"
+                    },
+                    "enableDdosProtection": {
+                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.EnableDdosProtection}"
+                    },
+                    "enableVmProtection": {
+                        "value": false
+                    }
+                }
+            }
+        },
+        {
+            "Name": "LocalVirtualNetworkPeering",
+            "ModuleDefinitionName": "vNetPeering",
+            "ResourceGroupName": "fabrikam-ase-sqldb-network-rg",
+            "Deployment": {
+                "OverrideParameters": {
+                    "localVnetName": {
+                        "value": "reference(VirtualNetwork.vNetName)"
+                    },
+                    "peeringName": {
+                        "value": "ase-sqldb-to-shrdsvcs"
+                    },
+                    "remoteVirtualNetworkId": {
+                        "value": "reference(fabrikam-shrdsvcs.VirtualNetwork.vNetResourceId)"
+                    }
+                }
+            }
+        },
+        {
+            "Name": "RemoteVirtualNetworkPeering",
+            "ModuleDefinitionName": "vNetPeering",
+            "Subscription": "SharedServices",
+            "ResourceGroupName": "fabrikam-shrdsvcs-network-rg",
+            "Deployment": {
+                "OverrideParameters": {
+                    "localVnetName": {
+                        "value": "reference(fabrikam-shrdsvcs.VirtualNetwork.vNetName)"
+                    },
+                    "peeringName": {
+                        "value": "shrdsvcs-to-ase-sqldb"
+                    },
+                    "remoteVirtualNetworkId": {
+                        "value": "reference(${ArchetypeParameters.InstanceName}.VirtualNetwork.vNetResourceId)"
+                    },
+                    "allowGatewayTransit": {
+                        "value": true
+                    },
+                    "useRemoteGateways": {
+                        "value": false
+                    }
+                }
+            }
+        },
+        {
+            "Name": "EnableServiceEndpointOnDiagnosticStorageAccount",
+            "ModuleDefinitionName": "StorageAccounts",
+            "Updates": "DiagnosticStorageAccount",
+            "Comments": "Enables Service endpoint on the Storage Account",
+            "Deployment": {
+                "OverrideParameters": {
+                    "networkAcls": {
+                        "value": "${ArchetypeParameters.Parameters.DiagnosticStorageAccount.NetworkAcls}"
+                    },
+                    "vNetId": {
+                        "value": "reference(VirtualNetwork.vNetResourceId)"
+                    }
+                }
+            }
+        }
+    ]
+}

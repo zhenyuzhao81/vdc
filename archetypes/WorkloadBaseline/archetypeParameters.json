@@ -1,0 +1,13 @@
+{
+    "Organization": "file(../common/archetypeOrganization.txt)",
+    "DeploymentName": "ase-sqldb",
+    "InstanceName": "${ArchetypeParameters.Organization}-${ArchetypeParameters.DeploymentName}",
+    "Subscription": "ASE_SQLDB",
+    "Parameters": {
+        "TenantId": "${Subscriptions.ASE_SQLDB.TenantId}",
+        "DiagnosticStorageAccount": {
+            "Name": "",
+            "ResourceGroup": "${ArchetypeParameters.InstanceName}-diagnostics-rg"
+        }
+    }
+}
