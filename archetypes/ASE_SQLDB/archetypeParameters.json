@@ -24,11 +24,9 @@
             "NetworkAcls": {
                 "bypass": "AzureServices",
                 "defaultAction": "Deny",
-                "virtualNetworkRules": [
-                    {
-                        "subnet": "${ArchetypeParameters.Parameters.VirtualNetwork.Subnets[0].Name}"
-                    }
-                ],
+                "virtualNetworkRules": [{
+                    "subnet": "${ArchetypeParameters.Parameters.VirtualNetwork.Subnets[0].Name}"
+                }],
                 "ipRules": []
             }
         },
@@ -39,73 +37,64 @@
                 "172.1.0.0/16"
             ],
             "EnableDdosProtection": false,
-            "Subnets": [
-                {
-                    "name": "default",
-                    "addressPrefix": "172.1.0.0/24",
-                    "networkSecurityGroupName": "${ArchetypeParameters.Parameters.NetworkSecurityGroups.Default.Name}",
-                    "routeTableName": "${ArchetypeParameters.Parameters.RouteTables.Default.Name}",
-                    "serviceEndpoints": [
-                        {
-                            "service": "Microsoft.EventHub"
-                        },
-                        {
-                            "service": "Microsoft.Sql"
-                        },
-                        {
-                            "service": "Microsoft.Storage"
-                        },
-                        {
-                            "service": "Microsoft.KeyVault"
-                        }
-                    ]
-                }
-            ],
+            "Subnets": [{
+                "name": "default",
+                "addressPrefix": "172.1.0.0/24",
+                "networkSecurityGroupName": "${ArchetypeParameters.Parameters.NetworkSecurityGroups.Default.Name}",
+                "routeTableName": "${ArchetypeParameters.Parameters.RouteTables.Default.Name}",
+                "serviceEndpoints": [{
+                        "service": "Microsoft.EventHub"
+                    },
+                    {
+                        "service": "Microsoft.Sql"
+                    },
+                    {
+                        "service": "Microsoft.Storage"
+                    },
+                    {
+                        "service": "Microsoft.KeyVault"
+                    }
+                ]
+            }],
             "DnsServers": "reference(fabrikam-shrdsvcs.ADDS.dnsServers)"
         },
         "ApplicationSecurityGroups": {},
         "NetworkSecurityGroups": "file(Network/networkSecurityGroups.json)",
         "RouteTables": "file(Network/routeTables.json)",
         "KeyVault": {
-            "Name": "shrdsvcs-akv02",
+            "Name": "${ArchetypeParameters.DeploymentName}-akv02",
             "Sku": "Premium",
             "EnableVaultForDeployment": true,
             "EnableVaultForDiskEncryption": true,
             "EnableVaultForTemplateDeployment": true,
-            "AccessPolicies": [
-                {
-                    "tenantId": "${ArchetypeParameters.Parameters.TenantId}",
-                    "objectId": "${ArchetypeParameters.Parameters.TenantId}",
-                    "permissions": {
-                        "certificates": [
-                            "All"
-                        ],
-                        "keys": [
-                            "All"
-                        ],
-                        "secrets": [
-                            "All"
-                        ]
-                    }
+            "AccessPolicies": [{
+                "tenantId": "${ArchetypeParameters.Parameters.TenantId}",
+                "objectId": "${ArchetypeParameters.Parameters.TenantId}",
+                "permissions": {
+                    "certificates": [
+                        "All"
+                    ],
+                    "keys": [
+                        "All"
+                    ],
+                    "secrets": [
+                        "All"
+                    ]
                 }
-            ],
+            }],
             "SecretsObject": {
                 "Comments": "Creating an object so we can use a secretsobject parameter type in our ARM template",
-                "Secrets": [
-                    {
-                        "secretName": "admin-user",
-                        "secretValue": "env(ADMIN_USER_PWD)"
-                    }
-                ]
+                "Secrets": [{
+                    "secretName": "admin-user",
+                    "secretValue": "env(ADMIN_USER_PWD)"
+                }]
             },
             "NetworkAcls": {
                 "bypass": "AzureServices",
                 "defaultAction": "Deny",
-                "virtualNetworkRules": [
-                    {
-                        "subnet": "${ArchetypeParameters.Parameters.VirtualNetwork.Subnets[0].Name}"
-                    }
-                ],
+                "virtualNetworkRules": [{
+                    "subnet": "${ArchetypeParameters.Parameters.VirtualNetwork.Subnets[0].Name}"
+                }],
                 "ipRules": []
             }
         },
@@ -117,7 +106,22 @@
 
         },
         "AppServiceEnvironment": {
-            
+            "Name": "${ArchetypeParameters.Organization}-ase",
+            "DnsSuffix": "${ArchetypeParameters.Parameters.OnPremisesInformation.ActiveDirectory.DomainName}",
+            "InternalLoadBalancingMode": "Web"
+        },
+        "AppServicePlan": {
+            "Name": "${ArchetypeParameters.Organization}-ase-webapp-plan01",
+            "Sku": {
+                "name": "I1",
+                "tier": "Isolated",
+                "size": "I1",
+                "family": "I",
+                "capacity": "1"
+            }
+        },
+        "AppServiceWebApp": {
+            "Name": "${ArchetypeParameters.Organization}-ase-web-app01"
         }
     }
 }
