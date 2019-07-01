@@ -48,9 +48,5 @@ Describe  "Blob Container State Repository Unit Test Cases" {
             $blobContainerStateRepository.SaveResourceState($entity);
             Assert-MockCalled Set-AzStorageblobcontent -Times 2 -Exactly;
         }
-
-        It "Should check for blob existence given container and blob name" {
-            
-        }
     }
 }
