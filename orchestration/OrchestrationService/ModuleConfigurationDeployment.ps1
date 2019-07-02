@@ -293,19 +293,39 @@ Function New-Deployment {
             Write-Debug "No RBAC deployment";
         }
 
-        # This deployment runs last because it could be
-        # a Subscription or Resource Group level deployment
+        $moduleConfigurationDeploymentTemplate = `
+            Get-DeploymentTemplateFileContents `
+                -DeploymentConfiguration $moduleConfiguration.Deployment `
+                -ModuleConfigurationsPath $archetypeInstanceJson.ArchetypeOrchestration.ModuleConfigurationsPath `
+                -WorkingDirectory $defaultWorkingDirectory;
+        Write-Debug "Deployment template contents is: $moduleConfigurationDeploymentTemplate";
+
+        $moduleConfigurationDeploymentParameters = `
+            Get-DeploymentParametersFileContents `
+                -DeploymentConfiguration $moduleConfiguration.Deployment `
+                -ModuleConfigurationsPath $archetypeInstanceJson.ArchetypeOrchestration.ModuleConfigurationsPath `
+                -WorkingDirectory $defaultWorkingDirectory;
+        Write-Debug "Deployment parameters contents are: $moduleConfigurationDeploymentParameters";
+        
+        # Merge the template's parameters json file
+        $moduleConfigurationDeploymentParameters = `
+            Merge-Parameters `
+                -DeploymentParameters $moduleConfigurationDeploymentParameters `
+                -ModuleConfiguration $moduleConfiguration `
+                -ArchetypeInstanceName $ArchetypeInstanceName `
+                -Operation @{ "False" = "deploy"; "True" = "validate"; }[$Validate.ToString()];
+
+        Write-Debug "Overridden parameters are: $moduleConfigurationDeploymentParameters";
+
         if ($null -ne $moduleConfigurationDeploymentTemplate) {
             Write-Debug "About to trigger a deployment";
             $resourceState = `
-                New-AzureResourceManagerDeployment `
+                Deploy-AzureResourceManagerTemplate `
                     -TenantId $subscriptionInformation.TenantId `
                     -SubscriptionId $subscriptionInformation.SubscriptionId `
                     -ResourceGroupName $moduleConfigurationResourceGroupName `
                     -DeploymentTemplate $moduleConfigurationDeploymentTemplate `
                     -DeploymentParameters $moduleConfigurationDeploymentParameters `
-                    -ModuleConfiguration $moduleConfiguration.Deployment `
-                    -ArchetypeInstanceName $ArchetypeInstanceName `
                     -Location $subscriptionInformation.Location `
                     -Validate:$($Validate.IsPresent);
             Write-Debug "Deployment complete, Resource state is: $(ConvertTo-Json -Compress $resourceState)";
@@ -343,7 +363,8 @@ Function New-Deployment {
             
         }
 
-        if(!$Validate.IsPresent) {
+        if(!$Validate.IsPresent -and `
+            $null -ne $resourceState) {
             # If there are deployment outputs, cache the values
             if ($null -ne $resourceState.DeploymentOutputs) {
 
@@ -530,6 +551,42 @@ Function Start-CustomScript {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+    # Execute the script only if the script object with
+    # command property is found. This is minimal configuration
+    # required to run the script.
+    if($null -ne $ModuleConfiguration.Script `
+        -and $null -ne $ModuleConfiguration.Script.Command) {
+
+            # Execute the script by calling Execute method
+            $scriptOutput = $customScriptExecutor.Execute(
+                $ModuleConfiguration.Script.Command, 
+                $ModuleConfiguration.Script.Arguments
+                );
+
+            # TODO: support sub-property retrieval for outputs
+            # Returning the minimal resource state object
+            $resourceState += @{
+                DeploymentId = [Guid]::NewGuid()
+                DeploymentName = [Guid]::NewGuid().ToString()
+                ResourceStates = @()
+                ResourceIds = @()
+                ResourceGroupName = $null
+                DeploymentTemplate = $null
+                DeploymentParameters = $null
+                Type="CustomScript"
+                DeploymentOutputs = @{
+                    "Output" = @{ 
+                        "Value" = $scriptOutput;
+                    }
+                }
+            }
+
+            # Return the result of script execution
+            return $resourceState;
+=======
+>>>>>>> 37f5e60811c308d14f43cd3091ac4a2561fb4888
     try {
         # Execute the script by calling Execute method
         $scriptOutput = $customScriptExecution.Execute(
@@ -547,6 +604,7 @@ Function Start-CustomScript {
         -and $null -ne $ModuleConfiguration.Script.Command) {
 >>>>>>> Completed the implementation of the archetype instance update with script outpout
 
+<<<<<<< HEAD
         # Return the result of script execution
         return $scriptOutput;
     }
@@ -597,12 +655,17 @@ Function Update-ArchetypeInstanceConfiguration {
         # Return the result of script execution
         return $scriptOutput;
 <<<<<<< HEAD
+=======
+        # Return the result of script execution
+        return $scriptOutput;
+>>>>>>> 37f5e60811c308d14f43cd3091ac4a2561fb4888
     }
     catch {
         Write-Host "An error ocurred while running Start-CustomScript";
         Write-Host $_;
         throw $_;
 >>>>>>> Completed the implementation of the archetype instance update with script outpout
+<<<<<<< HEAD
     }
 }
 
@@ -668,6 +731,63 @@ Function Update-ArchetypeInstanceConfiguration {
                 -Depth 50;
     }
 >>>>>>> Completed the implementation of the archetype instance update with script outpout
+
+    # Get PropertyPath and split it to get individual properties
+    $propertyPathArray = $PropertyPath.Split('.');
+
+    # Initialize the PropertyObject to the ArchetypeInstanceJson
+    $propertyObject = $ArchetypeInstanceJson;
+
+    # Drill down to the property through the path provided in the
+    # UpdatePath. We only iterate to the n-1 node, i.e stop on 
+    # property path short.
+    for($i = 0; $i -lt $propertyPathArray.Count - 1; $i++) {
+        $propertyName = $propertyPathArray[$i];
+        if($propertyObject.ContainsKey($propertyName)) {
+            $propertyObject = $propertyObject.$propertyName;
+        }
+        else {
+            Throw "Property Path $PropertyPath is an invalid path";
+        }
+=======
+>>>>>>> 37f5e60811c308d14f43cd3091ac4a2561fb4888
+    }
+
+    # Get the leaf property name
+    $leafPropertyName = $($propertyPathArray[$propertyPathArray.Count-1]);
+
+    # Set the value represented by the property path to the output value passed
+    $propertyObject.$leafPropertyName = $Output;
+
+    # Return the updated ArchetypeInstanceJson
+    return $ArchetypeInstanceJson;
+}
+
+Function Update-ArchetypeInstanceConfiguration {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [hashtable] $ArchetypeInstanceJson,
+        [Parameter(Mandatory=$true)]
+        [string] $PropertyPath,
+        [Parameter(Mandatory=$true)]
+        [string] $Output
+    )
+
+    # Check if the string returned is a JSON string
+    $isJson = `
+    Test-Json $scriptOutput `
+        -ErrorAction SilentlyContinue;
+
+    # If we can convert to object, then return converted object 
+    # else return string
+    if($isJson) {
+        $scriptOutput = `
+            ConvertFrom-Json `
+                -AsHashtable `
+                -InputObject $scriptOutput `
+                -Depth 50;
+    }
 
     # Get PropertyPath and split it to get individual properties
     $propertyPathArray = $PropertyPath.Split('.');
