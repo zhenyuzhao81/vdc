@@ -1,22 +1,47 @@
 {
     "ModuleConfigurationsPath": "../../modules",
-    "ModuleConfigurations": [{
+    "ModuleConfigurations": [
+        {
+            "Name": "SubscriptionCreation",
+            "Script": {
+                "Command": "../../scripts/subscription/new-subscription.ps1",
+                "Arguments": {
+                    "SubscriptionName": "vdc2-nist-workload1"
+                },
+                "UpdatePath": "Subscriptions.ASE_SQLDB.SubscriptionId"
+            }
+        },
+        {
+            "Name": "NISTControls",
+            "ModuleDefinitionName": "NISTControls",
+            "Deployment": {
+                "OverrideParameters": {
+                    "effect": {
+                        "value": "${Parameters.ModuleConfigurationParameters.NISTControls.Effect}"
+                    },
+                    "location": {
+                        "value": "${Parameters.Location}"
+                    }
+                }
+            }
+        },
+        {
             "Name": "DiagnosticStorageAccount",
             "ModuleDefinitionName": "StorageAccounts",
-            "ResourceGroupName": "${ArchetypeParameters.DiagnosticStorageAccount.ResourceGroupName}",
+            "ResourceGroupName": "${Parameters.ModuleConfigurationParameters.DiagnosticStorageAccount.ResourceGroup}",
             "Comments": "Storage Account that is used to store Diagnostic information of VMs and Non-VM resources",
             "Version": "2.0",
             "Policies": {
                 "Comments": "Policies is Optional - If no object is specified, no Policies deployment will occur",
                 "OverrideParameters": {
                     "effect": {
-                        "value": "Deny"
+                        "value": "${Parameters.ModuleConfigurationParameters.DiagnosticStorageAccount.Policies.Effect}"
                     },
                     "resourceGroup": {
-                        "value": "fabrikam-ase-sqldb-diagnostics-rg"
+                        "value": "${Parameters.ModuleConfigurationParameters.DiagnosticStorageAccount.ResourceGroup}"
                     },
                     "resourceGroupLocation": {
-                        "value": "West US 2"
+                        "value": "${Parameters.Location}"
                     }
                 }
             },
@@ -25,10 +50,10 @@
                 "TemplatePath": "../../modules/StorageAccounts/2.0/deploy.json",
                 "OverrideParameters": {
                     "storageAccountName": {
-                        "value": "${ArchetypeParameters.Parameters.DiagnosticStorageAccount.Name}"
+                        "value": "${Parameters.ModuleConfigurationParameters.DiagnosticStorageAccount.Name}"
                     },
                     "storageAccountSku": {
-                        "value": "${ArchetypeParameters.Parameters.DiagnosticStorageAccount.Sku}"
+                        "value": "${Parameters.ModuleConfigurationParameters.DiagnosticStorageAccount.Sku}"
                     }
                 }
             }
@@ -40,7 +65,7 @@
             "Deployment": {
                 "OverrideParameters": {
                     "logAnalyticsWorkspaceName": {
-                        "value": "${ArchetypeParameters.Parameters.LogAnalytics.Name}"
+                        "value": "${Parameters.ModuleConfigurationParameters.LogAnalytics.Name}"
                     },
                     "diagnosticStorageAccountName": {
                         "value": "reference(DiagnosticStorageAccount.storageAccountName)"
@@ -52,7 +77,7 @@
                         "value": "reference(DiagnosticStorageAccount.storageAccountAccessKey)"
                     },
                     "location": {
-                        "value": "${ArchetypeParameters.Parameters.LogAnalytics.Location}"
+                        "value": "${Parameters.ModuleConfigurationParameters.LogAnalytics.Location}"
                     }
                 }
             }
@@ -70,10 +95,10 @@
                         "value": "reference(DiagnosticStorageAccount.storageAccountResourceId)"
                     },
                     "networkSecurityGroupName": {
-                        "value": "${ArchetypeParameters.Parameters.NetworkSecurityGroups.Default.Name}"
+                        "value": "${Parameters.ModuleConfigurationParameters.NetworkSecurityGroups.Default.Name}"
                     },
                     "networkSecurityGroupSecurityRules": {
-                        "value": "${ArchetypeParameters.Parameters.NetworkSecurityGroups.Default.Rules}"
+                        "value": "${Parameters.ModuleConfigurationParameters.NetworkSecurityGroups.Default.Rules}"
                     }
                 }
             }
@@ -85,10 +110,10 @@
             "Deployment": {
                 "OverrideParameters": {
                     "routeTableName": {
-                        "value": "${ArchetypeParameters.Parameters.RouteTables.Default.Name}"
+                        "value": "${Parameters.ModuleConfigurationParameters.RouteTables.Default.Name}"
                     },
                     "routes": {
-                        "value": "${ArchetypeParameters.Parameters.RouteTables.Default.Routes}"
+                        "value": "${Parameters.ModuleConfigurationParameters.RouteTables.Default.Routes}"
                     }
                 }
             }
@@ -100,19 +125,19 @@
             "Deployment": {
                 "OverrideParameters": {
                     "vnetName": {
-                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.Name}"
+                        "value": "${Parameters.ModuleConfigurationParameters.VirtualNetwork.Name}"
                     },
                     "vnetAddressPrefixes": {
-                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.AddressPrefixes}"
+                        "value": "${Parameters.ModuleConfigurationParameters.VirtualNetwork.AddressPrefixes}"
                     },
                     "dnsServers": {
-                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.DnsServers}"
+                        "value": "${Parameters.ModuleConfigurationParameters.VirtualNetwork.DnsServers}"
                     },
                     "subnets": {
-                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.Subnets}"
+                        "value": "${Parameters.ModuleConfigurationParameters.VirtualNetwork.Subnets}"
                     },
                     "enableDdosProtection": {
-                        "value": "${ArchetypeParameters.Parameters.VirtualNetwork.EnableDdosProtection}"
+                        "value": "${Parameters.ModuleConfigurationParameters.VirtualNetwork.EnableDdosProtection}"
                     },
                     "enableVmProtection": {
                         "value": false
@@ -152,7 +177,7 @@
                         "value": "shrdsvcs-to-ase-sqldb"
                     },
                     "remoteVirtualNetworkId": {
-                        "value": "reference(${ArchetypeParameters.InstanceName}.VirtualNetwork.vNetResourceId)"
+                        "value": "reference(${Parameters.InstanceName}.VirtualNetwork.vNetResourceId)"
                     },
                     "allowGatewayTransit": {
                         "value": true
@@ -171,7 +196,7 @@
             "Deployment": {
                 "OverrideParameters": {
                     "networkAcls": {
-                        "value": "${ArchetypeParameters.Parameters.DiagnosticStorageAccount.NetworkAcls}"
+                        "value": "${Parameters.ModuleConfigurationParameters.DiagnosticStorageAccount.NetworkAcls}"
                     },
                     "vNetId": {
                         "value": "reference(VirtualNetwork.vNetResourceId)"

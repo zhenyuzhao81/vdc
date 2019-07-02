@@ -1,0 +1,74 @@
+{
+    "Organization": "file(../common/archetypeOrganization.txt)",
+    "DeploymentName": "ase-sqldb",
+    "InstanceName": "${Parameters.Organization}-${Parameters.DeploymentName}",
+    "Subscription": "ASE_SQLDB",
+    "Location": "West US 2",
+    "ModuleConfigurationParameters": {
+        "OnPremisesInformation": {
+            "ActiveDirectory": {
+                "PrimaryDomainControllerIP": "192.168.1.4",
+                "DomainName": "fabrikam.com",
+                "ADSitename": "Cloud-Site",
+                "DomainAdminUserName": "fabrikam"
+            },
+            "Network": {
+                "AddressPrefix": "192.168.1.0/28"
+            }
+        },
+        "DiagnosticStorageAccount": {
+            "Name": "${Parameters.Organization}asesqldiag01",
+            "ResourceGroup": "${Parameters.InstanceName}-diagnostics-rg",
+            "Sku": "Standard_GRS",
+            "NetworkAcls": {
+                "bypass": "AzureServices",
+                "defaultAction": "Deny",
+                "virtualNetworkRules": [{
+                    "subnet": "${Parameters.ModuleConfigurationParameters.VirtualNetwork.Subnets[0].Name}"
+                }],
+                "ipRules": []
+            },
+            "Policies": {
+                "Effect": "Audit"
+            }
+        },
+        "NISTControls": {
+            "Effect": "AuditIfNotExists"
+        },
+        "LogAnalytics": {
+            "Name": "ase-sqldb-la",
+            "Location": "West US 2"
+        },
+        "ApplicationSecurityGroups": {},
+        "NetworkSecurityGroups": "file(Network/networkSecurityGroups.json)",
+        "RouteTables": "file(Network/routeTables.json)",
+        "VirtualNetwork": {
+            "Name": "ase-sqldb-vnet",
+            "ResourceGroup": "${Parameters.Organization}-${Parameters.DeploymentName}-network-rg",
+            "AddressPrefixes": [
+                "172.1.0.0/16"
+            ],
+            "EnableDdosProtection": false,
+            "Subnets": [{
+                "name": "default",
+                "addressPrefix": "172.1.0.0/24",
+                "networkSecurityGroupName": "${Parameters.ModuleConfigurationParameters.NetworkSecurityGroups.Default.Name}",
+                "routeTableName": "${Parameters.ModuleConfigurationParameters.RouteTables.Default.Name}",
+                "serviceEndpoints": [{
+                        "service": "Microsoft.EventHub"
+                    },
+                    {
+                        "service": "Microsoft.Sql"
+                    },
+                    {
+                        "service": "Microsoft.Storage"
+                    },
+                    {
+                        "service": "Microsoft.KeyVault"
+                    }
+                ]
+            }],
+            "DnsServers": "reference(fabrikam-shrdsvcs.ADDS.dnsServers)"
+        }
+    }
+}

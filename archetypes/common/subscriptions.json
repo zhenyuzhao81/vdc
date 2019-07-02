@@ -14,8 +14,8 @@
     },
     "ASE_SQLDB": {
         "Comments": "ASE/SQL Workload subscription and tenant information",
-        "TenantId": "00000000000000000000000",
-        "SubscriptionId": "00000000000000000000000",
+        "TenantId": "b590c310-f80d-4c5b-981f-7dc9c87ea414",
+        "SubscriptionId": "526a7d1a-f819-4c05-badb-6a38f19a1b08",
         "Location": "West US 2"
     },
     "Artifacts": {

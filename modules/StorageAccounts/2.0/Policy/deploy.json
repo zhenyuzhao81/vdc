@@ -26,7 +26,7 @@
             "metadata": {
                 "description": "Resource group location used as part of the Policy assignment."
             }
-        },
+        }
     },
     "variables": {
         "storageAccountEncryptionPolicyDefinitionName": "[guid('storageEncryptionDefinition')]",

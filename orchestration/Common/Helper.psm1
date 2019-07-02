@@ -226,8 +226,9 @@ Function Format-DeploymentOutputs {
 
     try {
         $outputs = @{};
-        Write-Debug "Deployment outputs type is: $($DeploymentOutputs.GetType())";
         if ($null -ne $DeploymentOutputs) {
+            Write-Debug "Deployment outputs type is: $($DeploymentOutputs.GetType())";
+        
             # DeploymentOutputs are exposed as a Dictionary
             if (!$DeploymentOutputs.GetType().`
                 ToString().`
@@ -294,6 +295,7 @@ Function Format-DeploymentOutputs {
             return $outputs;
         }
         else {
+            Write-Debug "No deployment outputs";
             # No outputs, return null;
             return $null;
         }
