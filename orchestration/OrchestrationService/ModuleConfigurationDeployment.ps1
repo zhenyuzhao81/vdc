@@ -228,7 +228,6 @@ Function New-Deployment {
                 -DeploymentConfiguration $moduleConfiguration.Policies `
                 -ModuleConfigurationsPath $archetypeInstanceJson.Orchestration.ModuleConfigurationsPath `
                 -WorkingDirectory $defaultWorkingDirectory;
-<<<<<<< HEAD
             Write-Debug "Policy Deployment template contents is: $moduleConfigurationPolicyDeploymentTemplate";
 
             $moduleConfigurationPolicyDeploymentParameters = `
@@ -258,37 +257,6 @@ Function New-Deployment {
             else {
                 Write-Debug "No Policy deployment";
             }
-=======
-        Write-Debug "Policy Deployment template contents is: $moduleConfigurationPolicyDeploymentTemplate";
-
-        $moduleConfigurationPolicyDeploymentParameters = `
-            Get-PolicyDeploymentParametersFileContents `
-                -DeploymentConfiguration $moduleConfiguration.Policies `
-                -ModuleConfigurationsPath $archetypeInstanceJson.ArchetypeOrchestration.ModuleConfigurationsPath `
-                -WorkingDirectory $defaultWorkingDirectory;
-        Write-Debug "Policy Deployment parameters contents is: $moduleConfigurationPolicyDeploymentParameters";
-
-        $policyResourceState = @{};
-
-        if ($null -ne $moduleConfigurationPolicyDeploymentTemplate) {
-                Write-Debug "About to trigger a deployment";
-                $policyResourceState = `
-                New-AzureResourceManagerDeployment `
-                    -TenantId $subscriptionInformation.TenantId `
-                    -SubscriptionId $subscriptionInformation.SubscriptionId `
-                    -ResourceGroupName $moduleConfigurationResourceGroupName `
-                    -DeploymentTemplate $moduleConfigurationPolicyDeploymentTemplate `
-                    -DeploymentParameters $moduleConfigurationPolicyDeploymentParameters `
-                    -ModuleConfiguration $moduleConfiguration.Policies `
-                    -ArchetypeInstanceName $ArchetypeInstanceName `
-                    -Location $subscriptionInformation.Location `
-                    -Validate:$($Validate.IsPresent);
-                Write-Debug "Deployment complete, Resource state is: $(ConvertTo-Json -Compress $policyResourceState)";
-        }
-        else {
-            Write-Debug "No Policy deployment";
-        }
->>>>>>> added infra baseline to ASE/SQL deployment
 
             $moduleConfigurationRBACDeploymentTemplate = `
                 Get-RbacDeploymentTemplateFileContents `
@@ -561,6 +529,7 @@ Function Start-CustomScript {
     )
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     try {
         # Execute the script by calling Execute method
         $scriptOutput = $customScriptExecution.Execute(
@@ -569,6 +538,8 @@ Function Start-CustomScript {
             );
 =======
 <<<<<<< HEAD
+=======
+>>>>>>> Completed the implementation of the archetype instance update with script outpout
     # Execute the script only if the script object with
     # command property is found. This is minimal configuration
     # required to run the script.
@@ -625,6 +596,43 @@ Function Update-ArchetypeInstanceConfiguration {
 
         # Return the result of script execution
         return $scriptOutput;
+<<<<<<< HEAD
+    }
+    catch {
+        Write-Host "An error ocurred while running Start-CustomScript";
+        Write-Host $_;
+        throw $_;
+>>>>>>> Completed the implementation of the archetype instance update with script outpout
+    }
+}
+
+Function Update-ArchetypeInstanceConfiguration {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [hashtable] $ArchetypeInstanceJson,
+        [Parameter(Mandatory=$true)]
+        [string] $PropertyPath,
+        [Parameter(Mandatory=$true)]
+        [string] $Output
+    )
+
+    # Check if the string returned is a JSON string
+    $isJson = `
+    Test-Json $scriptOutput `
+        -ErrorAction SilentlyContinue;
+
+    # If we can convert to object, then return converted object 
+    # else return string
+    if($isJson) {
+        $scriptOutput = `
+            ConvertFrom-Json `
+                -AsHashtable `
+                -InputObject $scriptOutput `
+                -Depth 50;
+    }
+>>>>>>> Completed the implementation of the archetype instance update with script outpout
+=======
     }
     catch {
         Write-Host "An error ocurred while running Start-CustomScript";
