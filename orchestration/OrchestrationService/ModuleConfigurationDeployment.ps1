@@ -3,10 +3,10 @@
     [Parameter(Mandatory=$false)]
     [string] 
     $ArchetypeInstanceName,
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory=$false)]
     [string] 
     $ArchetypeDefinitionPath,
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory=$false)]
     [string] 
     $ModuleConfigurationName,
     [Parameter(Mandatory=$false)]
@@ -32,7 +32,7 @@ $cacheDataService = $null;
 $auditDataService = $null;
 $moduleStateDataService = $null;
 $configurationBuilder = $null;
-$customScriptExecutor = $null
+$customScriptExecution = $null
 $factory = $null;
 $defaultLocation = "West US";
 $defaultSupportedVersion = 2.0;
@@ -91,8 +91,8 @@ Function New-Deployment {
         $moduleStateDataService = `
             $factory.GetInstance('IModuleStateDataService');
 
-        $customScriptExecutor = `
-            $factory.GetInstance('CustomScriptExecutor');
+        $customScriptExecution = `
+            $factory.GetInstance('CustomScriptExecution');
         
         # Contruct the archetype instance object only if it is not already
         # cached
@@ -304,9 +304,29 @@ Function New-Deployment {
            $null -ne $ModuleConfiguration.Script.Command `
            -and `
            !$Validate.IsPresent) {
-            $resourceState = `
-                Start-CustomScript `
-                    -ModuleConfiguration $moduleConfiguration;
+
+            # Orchestrate the deployment of Custom Scripts
+            $result = `
+                Deploy-CustomScripts `
+                    -ModuleConfiguration $moduleConfiguration `
+                    -ArchetypeInstanceJson $archetypeInstanceJson;
+
+            # Retrieve the results from the script deployment
+            $resourceState = $result[0];
+
+            # Did the ArchetypeInstanceJson change?
+            if($null -ne $result[1]) {
+
+                # Set the ArchetypeInstanceJson only if it is 
+                # modified by the custom script deployment
+                $archetypeInstanceJson = $result[1];
+
+                # Re-cache the ArchetypeInstanceJson
+                Add-ItemToCache `
+                    -Key $ArchetypeInstanceName `
+                    -Value $archetypeInstanceJson;
+            }
+            
         }
 
         if(!$Validate.IsPresent) {
@@ -336,6 +356,7 @@ Function New-Deployment {
                     -SubscriptionId $subscriptionInformation.SubscriptionId `
                     -Policies $policyResourceState `
                     -RBAC $rbacResourceState;
+
             Write-Debug "Module state created, Id: $($moduleStateId.ToString())";
         }
     }
@@ -398,7 +419,7 @@ Function Get-WorkingDirectory {
             Write-Debug "Local deployment, attempting to resolve root path";
             # If no explicity working directory is passed and the script
             # is run locally, then use the current path
-            $defaultWorkingDirectory = Resolve-Path ".\";
+            $defaultWorkingDirectory = (Resolve-Path ".\").Path;
         }
 
         return $defaultWorkingDirectory;
@@ -408,6 +429,81 @@ Function Get-WorkingDirectory {
         Write-Host $_;
         throw $_;
     }
+}
+
+Function Deploy-CustomScripts {
+    param(
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $ModuleConfiguration,
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $ArchetypeInstanceJson
+    )
+
+    $result = @($null, $null);
+
+    # Run and retrieve the script output, if any.
+    $scriptOutput = `
+    Start-CustomScript `
+        -ModuleConfiguration $ModuleConfiguration;
+
+    # Update the archetype instance json
+    if($null -ne $scriptOutput `
+        -and $null -ne $ModuleConfiguration.Script `
+        -and $null -ne $ModuleConfiguration.Script.UpdatePath) {
+
+            # Update the ArchetypeInstanceJson if UpdatePath is
+            # Present
+            $ArchetypeInstanceJson = `
+                Update-ArchetypeInstanceConfiguration `
+                    -ArchetypeInstance $ArchetypeInstanceJson `
+                    -PropertyPath $ModuleConfiguration.Script.UpdatePath `
+                    -Output $scriptOutput;
+
+            # Update the result array with the updated ArchetypeInstanceJson
+            $result[1] = $ArchetypeInstanceJson;
+    }
+    
+    # Returning the minimal resource state object
+    $resourceState += @{
+        DeploymentId = [Guid]::NewGuid()
+        DeploymentName = [Guid]::NewGuid().ToString()
+        ResourceStates = @()
+        ResourceIds = @()
+        ResourceGroupName = $null
+        DeploymentTemplate = $null
+        DeploymentParameters = $null
+        Type="CustomScript"
+        
+    }
+
+    # Proceed only if there is output from script
+    if($null -ne $scriptOutput) {
+        # Convert the script output to string before updating the
+        # DeploymentOutputs
+        $scriptOutput = `
+            ConvertTo-Json `
+                -InputObject $scriptOutput;
+                
+        $resourceState += @{        
+            "DeploymentOutputs" = @{
+                "Output" = @{ 
+                    "Value" = $scriptOutput;
+                }
+            }
+        };
+    }
+    else {
+        $resourceState += @{};
+    }
+
+    # Set the resultant resourceState as the first item of
+    # the result array to be returned.
+    $result[0] = $resourceState;
+
+    # Return the result array
+    return $result;
 }
 
 Function Start-CustomScript {
@@ -420,36 +516,74 @@ Function Start-CustomScript {
 
     try {
         # Execute the script by calling Execute method
-        $scriptOutput = $customScriptExecutor.Execute(
+        $scriptOutput = $customScriptExecution.Execute(
             $ModuleConfiguration.Script.Command, 
             $ModuleConfiguration.Script.Arguments
             );
 
-        # Returning the minimal resource state object
-        $resourceState += @{
-            DeploymentId = [Guid]::NewGuid()
-            DeploymentName = [Guid]::NewGuid().ToString()
-            ResourceStates = @()
-            ResourceIds = @()
-            ResourceGroupName = $null
-            DeploymentTemplate = $null
-            DeploymentParameters = $null
-            Type="CustomScript"
-            DeploymentOutputs = @{
-                "Output" = @{ 
-                    "Value" = $scriptOutput;
-                }
-            }
-        }
-
         # Return the result of script execution
-        return $resourceState;
+        return $scriptOutput;
     }
     catch {
         Write-Host "An error ocurred while running Start-CustomScript";
         Write-Host $_;
         throw $_;
     }
+}
+
+Function Update-ArchetypeInstanceConfiguration {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [hashtable] $ArchetypeInstanceJson,
+        [Parameter(Mandatory=$true)]
+        [string] $PropertyPath,
+        [Parameter(Mandatory=$true)]
+        [string] $Output
+    )
+
+    # Check if the string returned is a JSON string
+    $isJson = `
+    Test-Json $scriptOutput `
+        -ErrorAction SilentlyContinue;
+
+    # If we can convert to object, then return converted object 
+    # else return string
+    if($isJson) {
+        $scriptOutput = `
+            ConvertFrom-Json `
+                -AsHashtable `
+                -InputObject $scriptOutput `
+                -Depth 50;
+    }
+
+    # Get PropertyPath and split it to get individual properties
+    $propertyPathArray = $PropertyPath.Split('.');
+
+    # Initialize the PropertyObject to the ArchetypeInstanceJson
+    $propertyObject = $ArchetypeInstanceJson;
+
+    # Drill down to the property through the path provided in the
+    # UpdatePath. We only iterate to the n-1 node, i.e stop on 
+    # property path short.
+    for($i = 0; $i -lt $propertyPathArray.Count - 1; $i++) {
+        $propertyName = $propertyPathArray[$i];
+        if($propertyObject.ContainsKey($propertyName)) {
+            $propertyObject = $propertyObject.$propertyName;
+        }
+        else {
+            Throw "Property Path $PropertyPath is an invalid path";
+        }
+    }
+
+    # Get the leaf property name
+    $leafPropertyName = $($propertyPathArray[$propertyPathArray.Count-1]);
+
+    # Set the value represented by the property path to the output value passed
+    $propertyObject.$leafPropertyName = $Output;
+
+    # Return the updated ArchetypeInstanceJson
+    return $ArchetypeInstanceJson;
 }
 
 Function Get-ArchetypeInstanceName {
