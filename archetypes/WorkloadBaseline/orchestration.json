@@ -42,6 +42,12 @@
                     },
                     "resourceGroupLocation": {
                         "value": "${Parameters.Location}"
+                    },
+                    "foo": {
+                        "value": "${Parameters.SubscriptionId}"
+                    },
+                    "bar": {
+                        "value": "${Parameters.TenantId}"
                     }
                 }
             },

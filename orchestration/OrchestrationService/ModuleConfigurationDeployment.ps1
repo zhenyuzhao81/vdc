@@ -40,7 +40,6 @@ $defaultModuleConfigurationsFolderName = "modules";
 $defaultTemplateFileName = "deploy.json";
 $defaultParametersFileName = "parameters.json";
 
-        
 Function New-Deployment {
     [CmdletBinding()]
     param (
@@ -115,10 +114,10 @@ Function New-Deployment {
                 -ModuleConfigurationName $moduleConfigurationName;
 
         if ($null -eq $moduleConfiguration) {
-            throw "Module configuration not found, module name: $moduleConfigurationName";
+            throw "Module configuration not found for module name: $moduleConfigurationName";
         }
 
-        Write-Debug "Module instance configuration is: $(ConvertTo-Json $moduleConfiguration)";
+        Write-Debug "Module instance is: $(ConvertTo-Json $moduleConfiguration)";
         
         # Let's make sure we use the updated name
         # There are instances when we have a module configuration updating an existing
@@ -560,17 +559,27 @@ Function New-ConfigurationInstance {
                     -Path $FilePath `
                     -RootPath $WorkingDirectory;
             
-            Write-Debug "File path: $FilePath";
+            Write-Debug "File path is: $FilePath";
 
-            $configurationBuilder = [ConfigurationBuilder]::new(
-                $null,
-                $FilePath
-            );
+            $configurationBuilder = `
+                [ConfigurationBuilder]::new(
+                    $null,
+                    $FilePath);
             
             # Generate archetype Instance from archetype 
-            # definition
+            # definition.
+            # Additionally pass a callback function to 
+            # configuration builder, this callback will
+            # add subscription and tenant ids to the configuration
+            # instance. 
+            # Since configuration builder is agnostic
+            # on the configuration being created, adding code
+            # to add subscription and tenant ids does not belong
+            # to configuration builder, therefore this code is
+            # passed as a callback
             $configurationInstance = `
-                $configurationBuilder.BuildConfigurationInstance();
+                $configurationBuilder.BuildConfigurationInstance(${function:\Add-SubscriptionAndTenantIds});
+
             Write-Debug "Configuration instance: $(ConvertTo-Json $configurationInstance -Depth 100)"
 
             if(![string]::IsNullOrEmpty($CacheKey)) {
@@ -586,6 +595,46 @@ Function New-ConfigurationInstance {
     }
     catch {
         Write-Host "An error ocurred while running New-ConfigurationInstance";
+        Write-Host $_;
+        throw $_;
+    }
+}
+
+Function Add-SubscriptionAndTenantIds {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [object]
+        $ArchetypeInstance
+    )
+    
+    try {
+        $subscriptionName = `
+            $ArchetypeInstance.Parameters.Subscription;
+        
+        $additionalInformation = @{
+            SubscriptionId = $ArchetypeInstance.Subscriptions.$subscriptionName.SubscriptionId
+            TenantId = $ArchetypeInstance.Subscriptions.$subscriptionName.TenantId
+        }
+
+        if ($null -eq $ArchetypeInstance.Parameters.SubscriptionId `
+            -and `
+            $null -eq $ArchetypeInstance.Parameters.TenantId) {
+            $ArchetypeInstance.Parameters | `
+                Add-Member `
+                    -NotePropertyMembers $additionalInformation;
+        }
+        elseif ($null -ne $ArchetypeInstance.Parameters.SubscriptionId) {
+            $ArchetypeInstance.Parameters.SubscriptionId = `
+                $additionalInformation.SubscriptionId;
+        }
+        elseif ($null -ne $ArchetypeInstance.Parameters.TenantId) {
+            $ArchetypeInstance.Parameters.TenantId = `
+                $additionalInformation.TenantId;
+        }
+    }
+    catch {
+        Write-Host "An error ocurred while running Add-SubscriptionAndTenantIds";
         Write-Host $_;
         throw $_;
     }

@@ -10,12 +10,6 @@ Class ConfigurationBuilder {
     $configurationDefinitionFileName = "";
     $fileFunctionResolutionDepthLimit = 20;
 
-    ConfigurationBuilder([string] $configurationDefinitionPath) {
-        ConfigurationBuilder(
-            $null, 
-            $configurationDefinitionPath);
-    }
-
     ConfigurationBuilder([string] $configurationInstanceName, 
                          [string] $configurationDefinitionPath) {
         # setting the configuration name for use with token parser
@@ -35,9 +29,9 @@ Class ConfigurationBuilder {
         }
     }
 
-    [hashtable] BuildConfigurationInstance() {
+    [hashtable] BuildConfigurationInstance($func) {
 
-       # Get the absolute path to the configuration definition file
+        # Get the absolute path to the configuration definition file
         $configurationDefinitionPath = `
             Join-Path `
                 $this.configurationDefinitionParentFolder `
@@ -45,7 +39,7 @@ Class ConfigurationBuilder {
         
         # Process the configuration definition file passing the absolute
         # path.
-        $configurationInstanceContentString = `
+        $configurationInstanceContent = `
             $this.ProcessFile($configurationDefinitionPath, 0);
 
         # Convert the resultant string from previous step to an
@@ -53,8 +47,18 @@ Class ConfigurationBuilder {
         # the ReplaceTokens function expects an object
         $this.configurationInstance = `
             ConvertFrom-Json `
-                -InputObject $configurationInstanceContentString `
+                -InputObject $configurationInstanceContent `
                 -Depth 100;
+
+        if ($null -ne $func) {
+            # Before replacing the tokens, let's run the 
+            # callback, the callback has a requirement,
+            # which is that it always receives one argument
+            # ConfigurationInstance as an object
+            Invoke-Command `
+                -ScriptBlock $func `
+                -ArgumentList $this.configurationInstance;
+        }
 
         # Replace Tokens in Configuration Instance
         $this.configurationInstance = `
