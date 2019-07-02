@@ -226,14 +226,9 @@ Function Format-DeploymentOutputs {
 
     try {
         $outputs = @{};
-<<<<<<< HEAD
         if ($null -ne $DeploymentOutputs) {
             Write-Debug "Deployment outputs type is: $($DeploymentOutputs.GetType())";
         
-=======
-        Write-Debug "Deployment outputs type is: $($DeploymentOutputs.GetType())";
-        if ($null -ne $DeploymentOutputs) {
->>>>>>> added infra baseline to ASE/SQL deployment
             # DeploymentOutputs are exposed as a Dictionary
             if (!$DeploymentOutputs.GetType().`
                 ToString().`
