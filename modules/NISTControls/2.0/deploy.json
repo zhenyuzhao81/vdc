@@ -96,7 +96,7 @@
             "apiVersion": "2018-05-01",
             "location": "[parameters('location')]",
             "properties": {
-                "displayName": "System updates on virtual machine scale sets should be installed",
+                "displayName": "CORS should not allow every resource to access your Web Application",
                 "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/5744710e-cc2f-4ee8-8809-3b11e89f4bc9",
                 "scope": "[subscription().id]",
                 "notScopes": [],
