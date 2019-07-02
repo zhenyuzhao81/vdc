@@ -1,6 +1,6 @@
 Class CustomScriptExecution {
 
-    [string] Execute([string] $command, [hashtable] $arguments) {
+    [object] Execute([string] $command, [hashtable] $arguments) {
 
         # Derive the script type from the command being
         # passed
@@ -114,7 +114,7 @@ Class CustomScriptExecution {
         }
     }
 
-    hidden [string] RunPowerShellScript([string] $command, [hashtable] $arguments, [array] $scriptType) {
+    hidden [object] RunPowerShellScript([string] $command, [hashtable] $arguments, [array] $scriptType) {
 
         if($scriptType[1].ToLower() -eq "script") {
 
@@ -139,7 +139,7 @@ Class CustomScriptExecution {
         
     }
 
-    hidden [string] RunBashScript([string] $command, [hashtable] $arguments, [array] $scriptType) {
+    hidden [object] RunBashScript([string] $command, [hashtable] $arguments, [array] $scriptType) {
 
         # Get arguments to execute the bash script
         $argumentsList = `
@@ -247,10 +247,10 @@ Class CustomScriptExecution {
         return $orderedArguments;
     }
 
-    hidden [string] RunJob([string] $command, [string] $filePath, [array] $argumentsList) {
+    hidden [object] RunJob([string] $command, [string] $filePath, [array] $argumentsList) {
         
         # Variable to store the output from running a script
-        $result = "";
+        $result = $null;
 
         try {
             $job = $null;
@@ -299,7 +299,7 @@ Class CustomScriptExecution {
                             $result = $_.Output[$_.Output.Count-1].ToString();
                         }
                         else {
-                            $result = "";
+                            $result = $null;
                         }
                     };
                 }

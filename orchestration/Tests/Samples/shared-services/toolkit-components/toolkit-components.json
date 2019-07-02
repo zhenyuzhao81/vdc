@@ -1,7 +1,7 @@
 { 
     "Audit": {
         "Comments": "Audit service",
-        "Type": "StorageAccount | CosmoDb",
+        "Type": "Local",
         "Profile": "Toolkit",
         "ResourceGroup": "vdc-toolkit-rg",
         "Location": "West US",
@@ -9,6 +9,6 @@
     },
     "Cache": {
         "Comments": "Caching service",
-        "Type": "AzureDevOps | Local"
+        "Type": "Local"
     }
 }
