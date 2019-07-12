@@ -162,7 +162,7 @@ Class Initialize {
                     New-AzRmStorageContainer `
                     -Name $_.Name `
                     -ResourceGroupName $this.dataStoreResourceGroupName `
-                    -StorageAccountName $this.dataStoreName `
+                    -StorageAccountName $this.dataStoreName;
                     
                     if ($_.IsImmutable) {
                         # Enable immutable storage
