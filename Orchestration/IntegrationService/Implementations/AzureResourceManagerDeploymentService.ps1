@@ -359,7 +359,7 @@ Class AzureResourceManagerDeploymentService: IDeploymentService {
         $cacheItems | ForEach-Object {
             # Cache Items object's TenantId is null when run in
             # an AzDO Agent
-            if ($_.TenantId `
+            if ($null -ne $_.TenantId `
                 -and $_.TenantId -eq $tenantId `
                 -and $_.ExpiresOn -gt (Get-Date)) {
                 $accessToken = $_.AccessToken;
